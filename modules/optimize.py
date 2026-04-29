@@ -429,9 +429,9 @@ def render():
     col_run, col_clr, _ = st.columns([1, 1, 4])
     with col_run:
         run_btn = st.button("🚀 Solve Optimization", type="primary",
-                            width='stretch', disabled=(data_dict is None))
+                            use_container_width=True, disabled=(data_dict is None))
     with col_clr:
-        if st.button("🔄 Clear Results", type="secondary", width='stretch'):
+        if st.button("🔄 Clear Results", type="secondary", use_container_width=True):
             s.optimization_result = None
             st.rerun()
 
@@ -665,56 +665,165 @@ def _render_results(s):
 
     with row2_l:
         if has_sku_data and not pln_sku.empty:
+            # ── Resolve YYYY-MM period labels ──────────────────────────────────
+            fc_input = s.get("forecast_input_dict")
+            ym_map   = fc_input.get("ym_map",   {}) if fc_input else {}
+            ym_order = fc_input.get("ym_order", []) if fc_input else []
+
+            if ym_order:
+                sort_key = {p: i for i, p in enumerate(ym_order)}
+                pln_sku  = pln_sku.copy()
+                pln_sku["_sort"] = pln_sku["Period"].map(
+                    lambda p: sort_key.get(int(p), 999))
+                pln_sku  = pln_sku.sort_values("_sort").drop(
+                    columns=["_sort"]).reset_index(drop=True)
+
+            def _lbl(p):
+                return ym_map.get(int(p), str(int(p))) if ym_map else str(int(p))
+
+            per_labels = [_lbl(p) for p in pln_sku["Period"].tolist()]
             inv_open   = pln_sku["Prev_Inventory"].tolist()
-            inv_end_l  = pln_sku["I_it_End"].tolist()
-            inv_levels = inv_open + [inv_end_l[-1]]
-            x_labels   = ["Start"] + [str(p) for p in pln_sku["Period"].tolist()]
-            order_mask = [False] + [bool(v) for v in pln_sku["B_it"].tolist()]
-            y_max      = max(inv_levels + [S_val, s_val]) * 1.15 if inv_levels else 100
+            inv_end    = pln_sku["I_it_End"].tolist()
+            b_it       = pln_sku["B_it"].tolist()
+            q_it       = pln_sku["Q_it"].tolist()
+
+            # ── Design ─────────────────────────────────────────────────────────
+            # Each period has 3 sub-x positions:
+            #   lbl__a  = opening inventory  (before order)
+            #   lbl__b  = post-order level   (= open + Q_it)  ← same x as __a
+            #   lbl__c  = ending inventory   (after demand)
+            #
+            # Using the SAME x for __a and __b makes the open→post segment
+            # perfectly vertical — showing the order as instant, not gradual.
+            #
+            # The teal line traces the full path: open→post→end each period.
+            # The amber Q_it overlay traces ONLY the open→post vertical segment,
+            # drawn as a thicker line on top so it looks like the teal line
+            # itself shows the restock jump in amber.
+
+            x_main, y_main, hover_main = [], [], []   # full teal inventory path
+            x_qit,  y_qit,  hover_qit = [], [], []   # amber vertical Q_it segments
+            x_dots, y_dots = [], []
+            dot_col, dot_sz, dot_sym = [], [], []
+
+            for idx, lbl in enumerate(per_labels):
+                open_v = float(inv_open[idx])
+                end_v  = float(inv_end[idx])
+                q_v    = float(q_it[idx])
+                is_ord = bool(b_it[idx])
+                post_v = open_v + q_v            # post-restock level
+
+                xa = lbl + "__a"   # opening  — shared by spike bottom too
+                xb = lbl + "__a"   # post      — SAME x as xa → vertical line
+                xc = lbl + "__c"   # ending
+
+                # Full inventory path
+                x_main += [xa, xb, xc]
+                y_main += [open_v, post_v, end_v]
+                hover_main += [
+                    f"<b>{lbl}</b><br>📦 Opening Inv: {open_v:.2f} units",
+                    (f"<b>{lbl}</b><br>⚡ After restock: {post_v:.2f} units"
+                     f"<br>Production Q_it: +{q_v:.2f}"
+                     if is_ord else f"<b>{lbl}</b><br>No order this period"),
+                    f"<b>{lbl}</b><br>📉 Ending Inv: {end_v:.2f} units",
+                ]
+
+                # Amber Q_it segment — vertical (xa == xb), drawn over the teal line
+                if is_ord and q_v > 0:
+                    x_qit += [xa, xb, None]
+                    y_qit += [open_v, post_v, None]
+                    hover_qit += [
+                        f"<b>{lbl}</b><br>⚡ Production Q_it: {q_v:.2f} units",
+                        f"<b>{lbl}</b><br>⚡ Production Q_it: {q_v:.2f} units",
+                        "",
+                    ]
+
+                # Dot at opening — amber open-circle on order periods
+                x_dots.append(xa)
+                y_dots.append(open_v)
+                dot_col.append(_AMBER if is_ord else _TEAL)
+                dot_sz.append(10 if is_ord else 5)
+                dot_sym.append("circle-open" if is_ord else "circle")
+
+            # One tick per period at __a position
+            x_tick_vals = [lbl + "__a" for lbl in per_labels]
+            x_tick_text = per_labels
+            y_max = max(y_main + [S_val, s_val], default=100) * 1.15
 
             fig_sim = go.Figure()
+
+            # Fill under teal line
             fig_sim.add_trace(go.Scatter(
-                x=x_labels, y=inv_levels, mode="none", fill="tozeroy",
+                x=x_main, y=y_main, mode="none", fill="tozeroy",
                 fillcolor="rgba(27,184,160,0.07)", showlegend=False, hoverinfo="skip",
             ))
+
+            # Teal inventory line — full path including vertical jumps
             fig_sim.add_trace(go.Scatter(
-                x=x_labels, y=inv_levels, mode="lines+markers", name="Inventory Level",
-                line=dict(color=_TEAL, width=2.5, shape="spline", smoothing=1.3),
-                marker=dict(
-                    size=[9 if order_mask[i] else 5 for i in range(len(inv_levels))],
-                    color=_TEAL,
-                    symbol=["circle-open" if order_mask[i] else "circle" for i in range(len(inv_levels))],
-                    line=dict(width=2, color=_TEAL),
-                ),
-                hovertemplate="<b>%{x}</b><br>Inventory: %{y:.1f}<extra></extra>",
+                x=x_main, y=y_main, mode="lines", name="Inventory Level",
+                line=dict(color=_TEAL, width=2.5, shape="linear"),
+                text=hover_main, hovertemplate="%{text}<extra></extra>",
             ))
+
+            # Amber Q_it overlay — same vertical segment, thicker, drawn on top
+            # Appears as part of the inventory line itself, coloured amber at jump
+            if x_qit:
+                fig_sim.add_trace(go.Scatter(
+                    x=x_qit, y=y_qit, mode="lines", name="Production Q_it",
+                    line=dict(color=_AMBER, width=4, shape="linear"),
+                    text=hover_qit, hovertemplate="%{text}<extra></extra>",
+                ))
+
+            # Dot markers
             fig_sim.add_trace(go.Scatter(
-                x=x_labels, y=[S_val]*len(x_labels), mode="lines", name="Reorder Point",
-                line=dict(color=_AMBER, width=1.5, dash="dash"), hoverinfo="skip",
+                x=x_dots, y=y_dots, mode="markers", showlegend=False,
+                marker=dict(size=dot_sz, color=dot_col, symbol=dot_sym,
+                            line=dict(width=2, color=dot_col)),
+                hoverinfo="skip",
             ))
+
+            # S line — Order-Up-To (amber dashed)
             fig_sim.add_trace(go.Scatter(
-                x=x_labels, y=[s_val]*len(x_labels), mode="lines", name="Safety Stock",
-                line=dict(color=_ROSE, width=1.5, dash="dash"), hoverinfo="skip",
+                x=x_main, y=[S_val]*len(x_main), mode="lines",
+                name=f"Order-Up-To S ({S_val:,.1f})",
+                line=dict(color=_AMBER, width=1.5, dash="dash"),
+                hovertemplate=f"Order-Up-To (S): {S_val:.1f}<extra></extra>",
             ))
+
+            # s line — Reorder Point (rose dashed)
+            fig_sim.add_trace(go.Scatter(
+                x=x_main, y=[s_val]*len(x_main), mode="lines",
+                name=f"Reorder Point s ({s_val:,.1f})",
+                line=dict(color=_ROSE, width=1.5, dash="dash"),
+                hovertemplate=f"Reorder Point (s): {s_val:.1f}<extra></extra>",
+            ))
+
             fig_sim.update_layout(
                 paper_bgcolor=_CARD, plot_bgcolor=_CARD2, height=_CHART_H,
                 title=dict(
-                    text='<span style="font-family:Fraunces,Georgia,serif;font-weight:300;font-size:15px;color:#f4f8fb;">Inventory Level</span>',
-                    font=dict(family="Fraunces, Georgia, serif", size=15, color=_WHITE),
+                    text='<span style="font-family:Fraunces,Georgia,serif;font-weight:300;'
+                         'font-size:15px;color:#f4f8fb;">Inventory Level — (s,S) Policy</span>',
                     x=0.0, y=0.99, xanchor="left", yanchor="top",
                 ),
                 font=dict(family="DM Sans, sans-serif", color=_TEXT2, size=11),
-                margin=dict(l=50, r=20, t=40, b=40),
-                xaxis=dict(gridcolor=_NAVY3, linecolor=_NAVY3, zeroline=False,
-                           showgrid=True, tickfont=dict(color=_SLATE2, size=9), tickangle=-30),
-                yaxis=dict(gridcolor=_NAVY3, linecolor=_NAVY3, zeroline=False,
-                           showgrid=True, tickfont=dict(color=_SLATE2, size=9), range=[0, y_max]),
-                legend=dict(orientation="h", y=-0.18, x=0.5, xanchor="center",
+                margin=dict(l=50, r=20, t=45, b=55),
+                xaxis=dict(
+                    gridcolor=_NAVY3, linecolor=_NAVY3, zeroline=False,
+                    showgrid=True, tickfont=dict(color=_SLATE2, size=9), tickangle=-30,
+                    tickvals=x_tick_vals, ticktext=x_tick_text,
+                ),
+                yaxis=dict(
+                    gridcolor=_NAVY3, linecolor=_NAVY3, zeroline=False,
+                    showgrid=True, tickfont=dict(color=_SLATE2, size=9),
+                    range=[0, y_max],
+                    title=dict(text="Units", font=dict(color=_SLATE2, size=10)),
+                ),
+                legend=dict(orientation="h", y=-0.22, x=0.5, xanchor="center",
                             bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
                             font=dict(size=10, color=_TEXT2), itemsizing="constant"),
                 hoverlabel=dict(bgcolor=_NAVY2, bordercolor=_BORDER,
                                 font=dict(family="DM Sans, sans-serif", color=_WHITE, size=12)),
-                hovermode="x unified",
+                hovermode="closest",
                 annotations=[dict(
                     text="period-by-period projection with (s,S) trigger",
                     x=1.0, y=1.04, xref="paper", yref="paper", showarrow=False,
@@ -722,7 +831,7 @@ def _render_results(s):
                     xanchor="right",
                 )],
             )
-            st.plotly_chart(fig_sim, width='stretch', config={"displayModeBar": False})
+            st.plotly_chart(fig_sim, use_container_width=True, config={"displayModeBar": False})
 
     with row2_r:
         if has_sku_data:
@@ -775,7 +884,7 @@ def _render_results(s):
                 hoverlabel=dict(bgcolor=_NAVY2, bordercolor=_BORDER,
                                 font=dict(family="DM Sans, sans-serif", color=_WHITE, size=12)),
             )
-            st.plotly_chart(fig_donut, width='stretch', config={"displayModeBar": False})
+            st.plotly_chart(fig_donut, use_container_width=True, config={"displayModeBar": False})
         else:
             rows_agg = {r["Objective Component"]: r["Value"]
                         for _, r in obj_df.iterrows()} if not obj_df.empty else {}
@@ -794,42 +903,16 @@ def _render_results(s):
         col_map = {"Item": "Item", "s_i": "Reorder Point s", "S_i": "Order-Up-To S"}
         avail = [c for c in col_map if c in tbl_policy.columns]
 
-        # ── Step 1: Open card ─────────────────────────────────────────────────
-        st.markdown('<div class="sc-card">', unsafe_allow_html=True)
-
-        # ── Step 2: Title + subtitle ──────────────────────────────────────────
-        st.markdown(
-            '<div class="sc-card-title" style="margin-bottom:4px">📋 (s,S) Reorder Policy Levels</div>'
-            '<div class="sc-card-sub" style="margin-bottom:12px">Order when Opening Inventory ≤ s; order up to S</div>',
-            unsafe_allow_html=True,
-        )
-
-        # ── Step 3: Filter label ──────────────────────────────────────────────
-        st.markdown(
-            '<div style="margin-bottom:8px;font-size:10px;text-transform:uppercase;'
-            'letter-spacing:.08em;color:#6b859e;">Filter columns</div>',
-            unsafe_allow_html=True,
-        )
-
-        # ── Step 4: Filter widgets inside the open card ───────────────────────
-        def _pol_clear():
-            st.session_state["pol_flt_item"] = ""
-
-        pol_f1, pol_f2 = st.columns([4, 1])
+        # Column filter
+        pol_f1, pol_f2 = st.columns([3, 1])
         with pol_f1:
-            pol_flt_item = st.text_input(
-                "Item", placeholder="Search Item…",
-                key="pol_flt_item", label_visibility="collapsed",
-            )
+            pol_flt_item = st.text_input("Item", placeholder="Search item…", key="pol_flt_item", label_visibility="collapsed")
         with pol_f2:
-            st.button("🔄 Reset", key="pol_flt_reset", on_click=_pol_clear, width="stretch")
-
-        # ── Step 5: Apply filter ──────────────────────────────────────────────
+            pol_reset = st.button("🔄 Reset", key="pol_flt_reset", use_container_width=True)
         tbl_policy_f = tbl_policy.copy()
         if pol_flt_item:
             tbl_policy_f = tbl_policy_f[tbl_policy_f["Item"].str.contains(pol_flt_item, case=False, na=False)]
 
-        # ── Step 6: Build table rows ──────────────────────────────────────────
         total_policy = len(tbl_policy_f)
         rows_html = ""
         for _, row in tbl_policy_f[avail].iterrows():
@@ -839,10 +922,11 @@ def _render_results(s):
                 cells += (f'<td style="{_TD_SKU}">{val}</td>' if c == "Item"
                           else f'<td style="{_TD_NUM}">{float(val):.4f}</td>')
             rows_html += f'<tr style="border-left:3px solid transparent;">{cells}</tr>'
-
-        # ── Step 7: Table HTML + close card ──────────────────────────────────
         st.markdown(
-            '<div style="overflow-x:auto;overflow-y:auto;max-height:400px;margin-top:4px;">'
+            '<div class="sc-card">'
+            '<div class="sc-card-title" style="margin-bottom:4px">📋 (s,S) Reorder Policy Levels</div>'
+            '<div class="sc-card-sub" style="margin-bottom:14px">Order when Opening Inventory ≤ s; order up to S</div>'
+            '<div style="overflow-x:auto;overflow-y:auto;max-height:400px;">'
             '<table style="width:100%;border-collapse:collapse;background:#1d3048;border-radius:8px;overflow:hidden;">'
             f'<thead><tr style="background:#243b55;">'
             + "".join(f'<th style="{_TH}">{col_map[c]}</th>' for c in avail)
@@ -856,39 +940,20 @@ def _render_results(s):
     if not plan_df.empty:
         tbl_plan = plan_df.copy()  # always show all SKUs regardless of selector
 
-        # ── Step 1: Open card ─────────────────────────────────────────────────
-        st.markdown('<div class="sc-card">', unsafe_allow_html=True)
-
-        # ── Step 2: Title + subtitle ──────────────────────────────────────────
-        st.markdown(
-            '<div class="sc-card-title" style="margin-bottom:4px">📋 Full Period-by-Period Plan</div>'
-            '<div class="sc-card-sub" style="margin-bottom:12px">Inventory, orders and shortages by item and period</div>',
-            unsafe_allow_html=True,
-        )
-
-        # ── Step 3: Filter label ──────────────────────────────────────────────
-        st.markdown(
-            '<div style="margin-bottom:8px;font-size:10px;text-transform:uppercase;'
-            'letter-spacing:.08em;color:#6b859e;">Filter columns</div>',
-            unsafe_allow_html=True,
-        )
-
-        # ── Step 4: Filter widgets inside the open card ───────────────────────
-        def _pl_clear():
-            st.session_state["pl_flt_item"] = ""
-
-        pl_f1, pl_f2 = st.columns([4, 1])
+        # Column filters for plan table
+        pl_f1, pl_f2, pl_f3 = st.columns([3, 1, 1])
         with pl_f1:
-            pl_flt_item = st.text_input(
-                "Item filter", placeholder="Search Item…",
-                key="pl_flt_item", label_visibility="collapsed",
-            )
+            pl_flt_item = st.text_input("Item filter", placeholder="Search item…", key="pl_flt_item", label_visibility="collapsed")
         with pl_f2:
-            st.button("🔄 Reset", key="pl_flt_reset", on_click=_pl_clear, width="stretch")
-
-        # ── Step 5: Apply filter ──────────────────────────────────────────────
+            all_periods = sorted(tbl_plan["Period"].unique().tolist())
+            period_opts = ["All"] + [str(p) for p in all_periods]
+            pl_flt_per  = st.selectbox("Period", period_opts, key="pl_flt_per", label_visibility="collapsed")
+        with pl_f3:
+            pl_reset = st.button("🔄 Reset", key="pl_flt_reset", use_container_width=True)
         if pl_flt_item:
             tbl_plan = tbl_plan[tbl_plan["Item"].str.contains(pl_flt_item, case=False, na=False)]
+        if pl_flt_per != "All":
+            tbl_plan = tbl_plan[tbl_plan["Period"].astype(str) == pl_flt_per]
 
         total_plan = len(tbl_plan)
 
@@ -960,6 +1025,7 @@ def _render_results(s):
         }
         display_cols = [c for c in col_display if c in tbl_plan.columns]
 
+        st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
         plan_rows_html = ""
         for _, row in tbl_plan[display_cols].iterrows():
             cells = ""
@@ -980,7 +1046,10 @@ def _render_results(s):
         # Sticky header fix: wrap table in a div with overflow, thead with sticky+z-index
         # The extra padding-top on tbody compensates so first row isn't hidden behind sticky header
         st.markdown(
-            '<div style="overflow-x:auto;overflow-y:auto;max-height:460px;border-radius:6px;margin-top:4px;">'
+            '<div class="sc-card">'
+            '<div class="sc-card-title" style="margin-bottom:4px">📋 Full Period-by-Period Plan</div>'
+            '<div class="sc-card-sub" style="margin-bottom:14px">Inventory, orders and shortages by item and period</div>'
+            '<div style="overflow-x:auto;overflow-y:auto;max-height:460px;border-radius:6px;">'
             '<table style="width:100%;border-collapse:collapse;background:#1d3048;min-width:1100px;">'
             '<thead><tr style="background:#243b55;position:sticky;top:0;z-index:10;box-shadow:0 2px 4px rgba(0,0,0,0.4);">'
             + "".join(f'<th style="{_TH}">{col_display[c]}</th>' for c in display_cols)
