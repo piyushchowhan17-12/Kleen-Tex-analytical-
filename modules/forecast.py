@@ -105,9 +105,9 @@ def render():
     col_run, col_clr, _ = st.columns([1, 1, 5])
     with col_run:
         run_btn = st.button("🚀 Run Forecasting", type="primary",
-                            use_container_width=True, disabled=(len(elig) == 0))
+                            width='stretch', disabled=(len(elig) == 0))
     with col_clr:
-        if st.button("🔄 Clear Results", type="secondary", use_container_width=True):
+        if st.button("🔄 Clear Results", type="secondary", width='stretch'):
             s.forecast_result      = None
             s.forecast_summary     = None
             s.forecast_fold_df     = None
@@ -198,7 +198,7 @@ def render():
             """, unsafe_allow_html=True)
 
             fig = _build_ts_chart(sku_data, sku_sel)
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+            st.plotly_chart(fig, width='stretch', config={"displayModeBar": False})
 
     st.markdown("</div>", unsafe_allow_html=True)  # end parameters card
 
@@ -558,11 +558,12 @@ def _render_results(s, sku_sel=None):
                            .sum().reset_index().sort_values(["Year","Month"]))
             last_actual = float(last_hist["Imputed_Demand"].iloc[-1]) if not last_hist.empty else 0.0
 
-            total_fc = len(fc_agg)
-
-            # Build ALL rows — internal scroller handles overflow
+            total_fc    = len(fc_agg)
+            fc_agg_disp = fc_agg.head(10) if total_fc > 10 else fc_agg
+            # Dynamic height: scroll only when > 10 rows
+            scroll_style = "overflow-y:auto;max-height:340px;" if total_fc > 10 else ""
             rows_html = ""
-            for _, row in fc_agg.iterrows():
+            for _, row in fc_agg_disp.iterrows():
                 rows_html += (
                     f'<tr style="border-left:3px solid transparent;">' +
                     f'<td style="{_TD}font-family:DM Mono,monospace;">{row["Period"]}</td>' +
@@ -571,28 +572,14 @@ def _render_results(s, sku_sel=None):
                     f'<td style="{_TD}font-family:DM Mono,monospace;">{row["Upper"]:.1f}</td>' +
                     '</tr>'
                 )
-
-            # Inner table height: total box height minus title + padding space
-            inner_h = _H - 72
-
-            # Activate scroller when more than 4 rows
-            scroll_style = (
-                f"overflow-y:auto;max-height:{inner_h}px;"
-                if total_fc > 4 else ""
-            )
-
-            fc_footer = (
-                f'<div style="font-size:11px;color:#6b859e;margin-top:8px;">'
-                f'Showing all {total_fc} months — scroll to see more</div>'
-                if total_fc > 4 else ""
-            )
-
-            # Use fixed height (not min-height) so this box always equals
-            # the Seasonality Index chart height exactly
+            fc_footer = (f'<div style="font-size:11px;color:#6b859e;margin-top:8px;">'
+                         f'Showing {min(10,total_fc)} of {total_fc} months'
+                         f'{" — scroll to see more" if total_fc > 10 else ""}</div>'
+                         if total_fc > 10 else "")
             st.markdown(
-                f'<div class="fc-box" style="padding:18px 20px;height:{_H}px;box-sizing:border-box;">' +
+                f'<div class="fc-box" style="padding:18px 20px;min-height:{_H}px;">' +
                 '<span class="fc-title">Forecast Values</span>' +
-                f'<div style="overflow-x:auto;{scroll_style}border-radius:6px;border:1px solid #243b55;margin-top:8px;">' +
+                f'<div style="overflow-x:auto;{scroll_style}border-radius:6px;border:1px solid #243b55;">' +
                 '<table style="width:100%;border-collapse:collapse;background:#1d3048;">' +
                 f'<thead><tr style="background:#162535;position:sticky;top:0;z-index:1;">' +
                 f'<th style="{_TH}">Month</th>' +
@@ -604,11 +591,7 @@ def _render_results(s, sku_sel=None):
                 unsafe_allow_html=True,
             )
         else:
-            st.markdown(
-                f'<div class="fc-box" style="padding:18px 20px;height:{_H}px;box-sizing:border-box;">'
-                f'<div class="warn-box">No forecast data available.</div></div>',
-                unsafe_allow_html=True,
-            )
+            st.markdown(f'<div class="fc-box" style="padding:18px 20px;min-height:{_H}px;"><div class="warn-box">No forecast data available.</div></div>', unsafe_allow_html=True)
 
     with col_tr:
         # Monthly Seasonality Index
@@ -641,7 +624,7 @@ def _render_results(s, sku_sel=None):
                 font=dict(color=_SLATE2, size=11, family="DM Sans, sans-serif"),
                 xanchor="center", yanchor="top",
             )
-            st.plotly_chart(fig_si, use_container_width=True, config={"displayModeBar": False})
+            st.plotly_chart(fig_si, width='stretch', config={"displayModeBar": False})
         else:
             st.markdown('<div class="warn-box">No historical data.</div>', unsafe_allow_html=True)
 
@@ -676,7 +659,7 @@ def _render_results(s, sku_sel=None):
             lo["legend"]["xanchor"] = "center"
             lo["yaxis"]["rangemode"] = "tozero"
             fig_yoy.update_layout(**lo)
-            st.plotly_chart(fig_yoy, use_container_width=True, config={"displayModeBar": False})
+            st.plotly_chart(fig_yoy, width='stretch', config={"displayModeBar": False})
         else:
             st.markdown('<div class="warn-box">No historical data.</div>', unsafe_allow_html=True)
 
@@ -707,23 +690,32 @@ def _render_results(s, sku_sel=None):
 
         # ── Column filters ────────────────────────────────────────────────────
         st.markdown('<div style="margin-bottom:8px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#6b859e;">Filter columns</div>', unsafe_allow_html=True)
+
+        model_opts   = ["All Best Models"] + sorted(tbl["Best Model"].dropna().unique().tolist()) if "Best Model" in tbl.columns else ["All Best Models"]
+        dtype_opts   = ["All Demand Types", "smooth", "erratic", "intermittent", "insufficient"]
+
+        # Reset via on_click callbacks — clears all filters without triggering data reload
+        def _ms_clear():
+            st.session_state["ms_flt_sku"]   = ""
+            st.session_state["ms_flt_model"] = model_opts[0]
+            st.session_state["ms_flt_dtype"] = dtype_opts[0]
+
         ms_f1, ms_f2, ms_f3, ms_f4 = st.columns([2, 1, 1, 1])
         with ms_f1:
             ms_flt_sku   = st.text_input("SKU", placeholder="Search SKU…", key="ms_flt_sku", label_visibility="collapsed")
         with ms_f2:
-            model_opts   = ["All"] + sorted(tbl["Best Model"].dropna().unique().tolist()) if "Best Model" in tbl.columns else ["All"]
             ms_flt_model = st.selectbox("Best Model", model_opts, key="ms_flt_model", label_visibility="collapsed")
         with ms_f3:
-            ms_flt_dtype = st.selectbox("Demand Type", ["All", "smooth", "erratic", "intermittent", "insufficient"], key="ms_flt_dtype", label_visibility="collapsed")
+            ms_flt_dtype = st.selectbox("Demand Type", dtype_opts, key="ms_flt_dtype", label_visibility="collapsed")
         with ms_f4:
-            ms_reset     = st.button("🔄 Reset", key="ms_flt_reset", use_container_width=True)
+            st.button("🔄 Reset", key="ms_flt_reset", on_click=_ms_clear, width="stretch")
 
         # Apply filters
         if ms_flt_sku:
             tbl = tbl[tbl["SKU"].str.contains(ms_flt_sku, case=False, na=False)]
-        if ms_flt_model != "All" and "Best Model" in tbl.columns:
+        if ms_flt_model != model_opts[0] and "Best Model" in tbl.columns:
             tbl = tbl[tbl["Best Model"] == ms_flt_model]
-        if ms_flt_dtype != "All" and "Demand Type" in tbl.columns:
+        if ms_flt_dtype != dtype_opts[0] and "Demand Type" in tbl.columns:
             tbl = tbl[tbl["Demand Type"].str.lower() == ms_flt_dtype]
 
         # Round numeric columns
@@ -824,7 +816,7 @@ def _render_results(s, sku_sel=None):
             data=buf.getvalue(),
             file_name="RF_SARIMA_TSB_Output.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
+            width='stretch',
         )
     with col_d2:
         opt_bytes = s.get("forecast_input_bytes")
@@ -834,12 +826,12 @@ def _render_results(s, sku_sel=None):
                 data=opt_bytes,
                 file_name="Input_Data_Adjusted.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+                width='stretch',
             )
         else:
-            st.button("⬇️ Optimization Input", disabled=True, use_container_width=True)
+            st.button("⬇️ Optimization Input", disabled=True, width='stretch')
     with col_d3:
-        if st.button("▶️ Proceed to Optimization →", type="primary", use_container_width=True):
+        if st.button("▶️ Proceed to Optimization →", type="primary", width='stretch'):
             s.active_module = "optimize"
             st.rerun()
 
