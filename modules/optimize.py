@@ -389,7 +389,7 @@ def render():
     st.markdown(f"""
     <div class="topbar">
         <div>
-            <div class="topbar-title">⚙️ Module 3 — Inventory Optimization</div>
+            <div class="topbar-title">Module 3 — Inventory Optimization</div>
             <div class="topbar-sub">(s,S) policy · SCIP solver · Minimize Z₁ holding + Z₂ setup</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
@@ -428,10 +428,10 @@ def render():
 
     col_run, col_clr, _ = st.columns([1, 1, 4])
     with col_run:
-        run_btn = st.button("🚀 Solve Optimization", type="primary",
+        run_btn = st.button("Solve Optimization", type="primary",
                             use_container_width=True, disabled=(data_dict is None))
     with col_clr:
-        if st.button("🔄 Clear Results", type="secondary", use_container_width=True):
+        if st.button("Clear Results", type="secondary", use_container_width=True):
             s.optimization_result = None
             st.rerun()
 
@@ -525,8 +525,8 @@ def _render_results(s):
     # ── Show timed "Optimization is Solved" message on first render after solve ─
     if s.get("_opt_just_solved"):
         s._opt_just_solved = False
-        msg = st.success("✅ Optimization is Solved")
-        time.sleep(3)
+        msg = st.success("Optimization is Solved")
+        time.sleep(1)
         msg.empty()
 
     policy_df = res.get("policy_df", pd.DataFrame())
@@ -906,18 +906,31 @@ def _render_results(s):
             </div>
             """, unsafe_allow_html=True)
 
-    # Policy table — title + subtitle + table all in one markdown call
+    # Policy table — title + filter + table inside one sc-card (matches SKU Classification Table layout)
     tbl_policy = policy_df  # always show all SKUs regardless of selector
     if not tbl_policy.empty:
         col_map = {"Item": "Item", "s_i": "Reorder Point s", "S_i": "Order-Up-To S"}
         avail = [c for c in col_map if c in tbl_policy.columns]
 
-        # Column filter
+
+        st.markdown(
+            '<div class="sc-card-title" style="margin-bottom:4px">📋 (s,S) Reorder Policy Levels</div>'
+            '<div class="sc-card-sub" style="margin-bottom:12px">Order when Opening Inventory ≤ s; order up to S</div>',
+            unsafe_allow_html=True,
+        )
+
+        # Column filter — same layout pattern as SKU Classification Table
+        st.markdown('<div style="margin-bottom:8px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#6b859e;">Filter columns</div>', unsafe_allow_html=True)
+
+        def _pol_clear():
+            st.session_state["pol_flt_item"] = ""
+
         pol_f1, pol_f2 = st.columns([3, 1])
         with pol_f1:
             pol_flt_item = st.text_input("Item", placeholder="Search item…", key="pol_flt_item", label_visibility="collapsed")
         with pol_f2:
-            pol_reset = st.button("🔄 Reset", key="pol_flt_reset", use_container_width=True)
+            st.button("Reset", key="pol_flt_reset", on_click=_pol_clear, use_container_width=True)
+
         tbl_policy_f = tbl_policy.copy()
         if pol_flt_item:
             tbl_policy_f = tbl_policy_f[tbl_policy_f["Item"].str.contains(pol_flt_item, case=False, na=False)]
@@ -931,34 +944,46 @@ def _render_results(s):
                 cells += (f'<td style="{_TD_SKU}">{val}</td>' if c == "Item"
                           else f'<td style="{_TD_NUM}">{float(val):.4f}</td>')
             rows_html += f'<tr style="border-left:3px solid transparent;">{cells}</tr>'
-        st.markdown(
-            '<div class="sc-card">'
-            '<div class="sc-card-title" style="margin-bottom:4px">📋 (s,S) Reorder Policy Levels</div>'
-            '<div class="sc-card-sub" style="margin-bottom:14px">Order when Opening Inventory ≤ s; order up to S</div>'
-            '<div style="overflow-x:auto;overflow-y:auto;max-height:400px;">'
-            '<table style="width:100%;border-collapse:collapse;background:#1d3048;border-radius:8px;overflow:hidden;">'
-            f'<thead><tr style="background:#243b55;">'
+
+        table_html = (
+            '<div style="overflow-x:auto;overflow-y:auto;max-height:400px;border-radius:8px;border:1px solid #243b55;margin-top:6px;">'
+            '<table style="width:100%;border-collapse:collapse;background:#1d3048;">'
+            f'<thead><tr style="background:#162535;">'
             + "".join(f'<th style="{_TH}">{col_map[c]}</th>' for c in avail)
             + f'</tr></thead><tbody>{rows_html}</tbody></table></div>'
-            + f'<div style="font-size:11px;color:#6b859e;margin-top:10px;">'
-              f'{total_policy:,} items</div></div>',
-            unsafe_allow_html=True,
+            + f'<div style="font-size:11px;color:#6b859e;margin-top:8px;">'
+              f'Showing {total_policy:,} of {len(tbl_policy):,} items</div>'
         )
+        st.markdown(table_html, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # Period plan table — title + subtitle + table all in one markdown call
+    # Period plan table — same layout as (s,S) Reorder Policy Levels
     if not plan_df.empty:
         tbl_plan = plan_df.copy()  # always show all SKUs regardless of selector
 
         # Column filters for plan table
+        all_periods = sorted(tbl_plan["Period"].unique().tolist())
+        period_opts = ["All"] + [str(p) for p in all_periods]
+
+        def _pl_clear():
+            st.session_state["pl_flt_item"] = ""
+            st.session_state["pl_flt_per"]  = period_opts[0]
+
+        st.markdown(
+            '<div class="sc-card-title" style="margin-bottom:4px">📋 Full Period-by-Period Plan</div>'
+            '<div class="sc-card-sub" style="margin-bottom:12px">Inventory, orders and shortages by item and period</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown('<div style="margin-bottom:8px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#6b859e;">Filter columns</div>', unsafe_allow_html=True)
+
         pl_f1, pl_f2, pl_f3 = st.columns([3, 1, 1])
         with pl_f1:
             pl_flt_item = st.text_input("Item filter", placeholder="Search item…", key="pl_flt_item", label_visibility="collapsed")
         with pl_f2:
-            all_periods = sorted(tbl_plan["Period"].unique().tolist())
-            period_opts = ["All"] + [str(p) for p in all_periods]
             pl_flt_per  = st.selectbox("Period", period_opts, key="pl_flt_per", label_visibility="collapsed")
         with pl_f3:
-            pl_reset = st.button("🔄 Reset", key="pl_flt_reset", use_container_width=True)
+            st.button("Reset", key="pl_flt_reset", on_click=_pl_clear, use_container_width=True)
+
         if pl_flt_item:
             tbl_plan = tbl_plan[tbl_plan["Item"].str.contains(pl_flt_item, case=False, na=False)]
         if pl_flt_per != "All":
@@ -1034,7 +1059,6 @@ def _render_results(s):
         }
         display_cols = [c for c in col_display if c in tbl_plan.columns]
 
-        st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
         plan_rows_html = ""
         for _, row in tbl_plan[display_cols].iterrows():
             cells = ""
@@ -1052,21 +1076,17 @@ def _render_results(s):
                     cells += f'<td style="{_TD_NUM}">{val}</td>'
             plan_rows_html += f'<tr style="border-left:3px solid transparent;">{cells}</tr>'
 
-        # Sticky header fix: wrap table in a div with overflow, thead with sticky+z-index
-        # The extra padding-top on tbody compensates so first row isn't hidden behind sticky header
         st.markdown(
-            '<div class="sc-card">'
-            '<div class="sc-card-title" style="margin-bottom:4px">📋 Full Period-by-Period Plan</div>'
-            '<div class="sc-card-sub" style="margin-bottom:14px">Inventory, orders and shortages by item and period</div>'
-            '<div style="overflow-x:auto;overflow-y:auto;max-height:460px;border-radius:6px;">'
+            '<div style="overflow-x:auto;overflow-y:auto;max-height:460px;border-radius:8px;border:1px solid #243b55;margin-top:6px;">'
             '<table style="width:100%;border-collapse:collapse;background:#1d3048;min-width:1100px;">'
-            '<thead><tr style="background:#243b55;position:sticky;top:0;z-index:10;box-shadow:0 2px 4px rgba(0,0,0,0.4);">'
+            '<thead><tr style="background:#162535;position:sticky;top:0;z-index:10;box-shadow:0 2px 4px rgba(0,0,0,0.4);">'
             + "".join(f'<th style="{_TH}">{col_display[c]}</th>' for c in display_cols)
             + f'</tr></thead><tbody>{plan_rows_html}</tbody></table></div>'
-            + f'<div style="font-size:11px;color:#6b859e;margin-top:10px;">'
-              f'{len(tbl_plan):,} rows — scroll horizontally and vertically</div></div>',
+            + f'<div style="font-size:11px;color:#6b859e;margin-top:8px;">'
+              f'Showing {len(tbl_plan):,} of {len(plan_df):,} rows — scroll horizontally and vertically</div>',
             unsafe_allow_html=True,
         )
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # Download — Period_Results uses the same transformed table shown in UI
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)

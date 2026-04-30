@@ -91,7 +91,7 @@ def render():
         st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
         col_reup, _ = st.columns([1, 3])
         with col_reup:
-            if st.button("🔄 Upload New File", type="secondary", width='stretch', key="reupload_btn"):
+            if st.button("Upload New File", type="secondary", width='stretch', key="reupload_btn"):
                 for k in ["raw_data", "raw_filename", "selected_skus", "imputed_data",
                           "forecast_result", "forecast_summary", "forecast_fold_df",
                           "forecast_input_ready", "forecast_input_dict", "forecast_input_bytes",
@@ -124,7 +124,6 @@ def render():
     # ════════════════════════════════════════════════════════════════════════
     # SECTION E — ADI / CV² Threshold Controls + Charts
     # ════════════════════════════════════════════════════════════════════════
-    st.markdown('<div class="sc-card">', unsafe_allow_html=True)
     st.markdown('<div class="sc-card-title">⚙️ SKU Classification — ADI / CV² Thresholds</div>', unsafe_allow_html=True)
     st.markdown('<div class="sc-card-sub" style="margin-bottom:14px">Adjust thresholds to filter SKUs for forecasting. Only SKUs within both thresholds proceed to Module 2.</div>', unsafe_allow_html=True)
 
@@ -181,7 +180,6 @@ def render():
     # ════════════════════════════════════════════════════════════════════════
     # SECTION F — SKU Classification Table (styled like HTML reference)
     # ════════════════════════════════════════════════════════════════════════
-    st.markdown('<div class="sc-card">', unsafe_allow_html=True)
 
     st.markdown(
         '<div class="sc-card-title" style="margin-bottom:4px">📋 SKU Classification Table</div>'
@@ -212,7 +210,7 @@ def render():
     with f4:
         flt_stat  = st.selectbox("Status", stat_opts, key="clf_flt_stat", label_visibility="collapsed")
     with f5:
-        if st.button("🔄 Reset", key="clf_flt_reset", width="stretch"):
+        if st.button("Reset", key="clf_flt_reset", width="stretch"):
             st.session_state["_clf_reset"] = True
             st.rerun()
 
@@ -317,8 +315,7 @@ def render():
 
     # SECTION H — Export & Proceed
     # ════════════════════════════════════════════════════════════════════════
-    st.markdown('<div class="sc-card">', unsafe_allow_html=True)
-    st.markdown('<div class="sc-card-title">💾 Export &amp; Next Steps</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sc-card-title">Export &amp; Next Steps</div>', unsafe_allow_html=True)
 
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as writer:
@@ -329,14 +326,14 @@ def render():
     col_dl1, col_dl2, _ = st.columns([1, 1, 2])
     with col_dl1:
         st.download_button(
-            "⬇️ Download Imputed Data (.xlsx)",
+            "Download Imputed Data (.xlsx)",
             data=buf.getvalue(),
             file_name="Imputation_Output.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             width='stretch',
         )
     with col_dl2:
-        if st.button("▶️ Proceed to Forecasting →", type="primary", width='stretch'):
+        if st.button("Proceed to Forecasting →", type="primary", width='stretch'):
             passing = stats_df[stats_df["pass_filter"]]["SKU"].tolist()
             if not passing:
                 st.warning("No SKUs pass current thresholds. Adjust the ADI/CV² sliders above.")
@@ -356,7 +353,6 @@ def _render_upload_section():
     """File upload card — shown only when raw_data is None."""
     s = st.session_state
 
-    st.markdown('<div class="sc-card">', unsafe_allow_html=True)
     st.markdown('<div class="sc-card-title" style="margin-bottom:12px">📂 Upload Raw Data File</div>', unsafe_allow_html=True)
 
     col1, col2 = st.columns([2, 1])
@@ -416,22 +412,21 @@ def _render_upload_section():
     n_skus = len(skus)
 
     # SKU selection
-    st.markdown('<div class="sc-card">', unsafe_allow_html=True)
-    st.markdown('<div class="sc-card-title">🎯 SKU Selection</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sc-card-title">SKU Selection</div>', unsafe_allow_html=True)
     st.markdown('<div class="sc-card-sub" style="margin-bottom:16px">Choose how many SKUs to include. Top N by chosen method, or pick manually.</div>', unsafe_allow_html=True)
 
     selected_skus = _render_sku_selector(df, skus, n_skus, key_suffix="initial")
 
     st.markdown(f"""
     <div class="info-box" style="margin-top:12px">
-        🎯 <strong>{len(selected_skus)} SKUs</strong> will be processed through the full pipeline
+        <strong>{len(selected_skus)} SKUs</strong> will be processed through the full pipeline
         (Imputation → Forecasting → Optimization)
     </div>
     """, unsafe_allow_html=True)
 
     col_btn1, col_btn2, _ = st.columns([1, 1, 3])
     with col_btn1:
-        if st.button("✅ Confirm & Run Imputation", type="primary", width='stretch', key="confirm_btn"):
+        if st.button("Confirm & Run Imputation", type="primary", width='stretch', key="confirm_btn"):
             # Commit staged data and selected SKUs together atomically
             s.raw_data             = s._staged_df
             s.raw_filename         = s._staged_filename
@@ -443,7 +438,7 @@ def _render_upload_section():
             s.optimization_result  = None
             st.rerun()
     with col_btn2:
-        if st.button("🔄 Reset All", type="secondary", width='stretch', key="reset_btn"):
+        if st.button("Reset All", type="secondary", width='stretch', key="reset_btn"):
             for k in ["raw_data", "raw_filename", "selected_skus", "imputed_data",
                       "_staged_df", "_staged_filename",
                       "forecast_result", "forecast_summary", "forecast_fold_df",
@@ -463,7 +458,7 @@ def _render_sku_selection_inline(df, current_skus, key_suffix="inline"):
 
     selected_skus = _render_sku_selector(df, skus, n_skus, key_suffix=key_suffix)
 
-    if st.button("✅ Apply SKU Selection", type="primary", width='content', key=f"apply_sku_{key_suffix}"):
+    if st.button("Apply SKU Selection", type="primary", width='content', key=f"apply_sku_{key_suffix}"):
         s.selected_skus        = selected_skus
         s.n_skus               = len(selected_skus)
         s.imputed_data         = None  # force re-imputation
@@ -525,7 +520,7 @@ def _render_sku_selector(df, skus, n_skus, key_suffix=""):
                 )
             with _sc2:
                 st.button(
-                    "🔄 Reset",
+                    "Reset",
                     key=f"sku_preview_reset_btn_{key_suffix}",
                     width="stretch",
                     on_click=_clear_search,
