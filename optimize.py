@@ -506,7 +506,7 @@ def _run_optimization(data_dict, warehouse_cap, fixed_order, s):
                 "obj_df":    obj_df,
                 "cap_df":    cap_df,
             }
-            st.success(f"✅ Optimal solution found! Objective: ${model.getObjVal():,.2f}")
+            s._opt_just_solved = True
             st.rerun()
 
         except Exception as e:
@@ -528,15 +528,24 @@ def _run_heuristic_ui(data_dict, warehouse_cap, fixed_order, s):
             "policy_df": policy_df, "plan_df": plan_df,
             "obj_df": obj_df, "cap_df": cap_df,
         }
+        s._opt_just_solved = True
         st.rerun()
     except Exception as e:
         st.markdown(f'<div class="error-box">❌ Heuristic failed: {e}</div>', unsafe_allow_html=True)
 
 
 def _render_results(s):
+    import time
     res = s.optimization_result
     if not res:
         return
+
+    # ── Show timed "Optimization is Solved" message on first render after solve ─
+    if s.get("_opt_just_solved"):
+        s._opt_just_solved = False
+        msg = st.success("✅ Optimization is Solved")
+        time.sleep(3)
+        msg.empty()
 
     policy_df = res.get("policy_df", pd.DataFrame())
     plan_df   = res.get("plan_df",   pd.DataFrame())
