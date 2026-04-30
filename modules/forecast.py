@@ -29,7 +29,7 @@ def render():
     st.markdown(f"""
     <div class="topbar">
         <div>
-            <div class="topbar-title">📈 Module 2 — Demand Forecasting</div>
+            <div class="topbar-title">Module 2 — Demand Forecasting</div>
             <div class="topbar-sub">Rolling validation · RandomForest 2-Stage · SARIMA · TSB · Multi-model selection</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
@@ -44,7 +44,6 @@ def render():
     # Contains: Group + SKU pickers, ADI/CV²/Months sliders, Run button.
     # When forecast exists: also shows live metrics + time-series chart inline.
     # ══════════════════════════════════════════════════════════════════════════
-    st.markdown('<div class="sc-card">', unsafe_allow_html=True)
     st.markdown("""
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div>
@@ -97,17 +96,17 @@ def render():
 
     st.markdown(f"""
     <div class="info-box" style="margin-top:8px">
-        🎯 <strong>{len(elig)} eligible SKUs</strong> out of {len(sel_skus)} selected
+         <strong>{len(elig)} eligible SKUs</strong> out of {len(sel_skus)} selected
         &nbsp;·&nbsp; ADI ≤ {adi_t}, CV² ≤ {cv2_t}
     </div>
     """, unsafe_allow_html=True)
 
     col_run, col_clr, _ = st.columns([1, 1, 5])
     with col_run:
-        run_btn = st.button("🚀 Run Forecasting", type="primary",
+        run_btn = st.button("Run Forecasting", type="primary",
                             width='stretch', disabled=(len(elig) == 0))
     with col_clr:
-        if st.button("🔄 Clear Results", type="secondary", width='stretch'):
+        if st.button("Clear Results", type="secondary", width='stretch'):
             s.forecast_result      = None
             s.forecast_summary     = None
             s.forecast_fold_df     = None
@@ -457,8 +456,7 @@ def _render_results(s, sku_sel=None):
     else:
         sku_detail = detail_df.copy()
 
-    st.markdown('<div class="sc-card">', unsafe_allow_html=True)
-    st.markdown(f'<div class="sc-card-title">📊 Forecasting Summary{sku_label}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="sc-card-title">Forecasting Summary{sku_label}</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="sc-card-sub" style="margin-bottom:14px">{sku_sub}</div>', unsafe_allow_html=True)
 
     fc_rows   = sku_detail[sku_detail["Demand_Prediction"].notna()]
@@ -668,10 +666,9 @@ def _render_results(s, sku_sel=None):
 
 
     # ── Model Summary Table — styled HTML matching SKU Classification Table ─────
-    st.markdown('<div class="sc-card">', unsafe_allow_html=True)
 
     st.markdown(
-        '<div class="sc-card-title" style="margin-bottom:4px">📋 Full Model Summary Table</div>'
+        '<div class="sc-card-title" style="margin-bottom:4px">Full Model Summary Table</div>'
         '<div class="sc-card-sub" style="margin-bottom:12px">Best model selected per SKU via rolling cross-validation</div>',
         unsafe_allow_html=True,
     )
@@ -708,7 +705,7 @@ def _render_results(s, sku_sel=None):
         with ms_f3:
             ms_flt_dtype = st.selectbox("Demand Type", dtype_opts, key="ms_flt_dtype", label_visibility="collapsed")
         with ms_f4:
-            st.button("🔄 Reset", key="ms_flt_reset", on_click=_ms_clear, width="stretch")
+            st.button("Reset", key="ms_flt_reset", on_click=_ms_clear, width="stretch")
 
         # Apply filters
         if ms_flt_sku:
@@ -798,8 +795,7 @@ def _render_results(s, sku_sel=None):
     st.markdown("</div>", unsafe_allow_html=True)
 
     # ── Download & Proceed ─────────────────────────────────────────────────────
-    st.markdown('<div class="sc-card">', unsafe_allow_html=True)
-    st.markdown('<div class="sc-card-title">💾 Export & Next Steps</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sc-card-title">Export & Next Steps</div>', unsafe_allow_html=True)
     st.markdown('<div class="sc-card-sub" style="margin-bottom:14px">Download results or proceed to the Optimization module</div>', unsafe_allow_html=True)
 
     col_d1, col_d2, col_d3 = st.columns(3)
@@ -819,7 +815,7 @@ def _render_results(s, sku_sel=None):
             if not fold_df.empty:
                 fold_df.to_excel(w, sheet_name="Fold_Summary", index=False)
         st.download_button(
-            "⬇️ Download Forecast Results",
+            "Download Forecast Results",
             data=buf.getvalue(),
             file_name="RF_SARIMA_TSB_Output.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -829,16 +825,16 @@ def _render_results(s, sku_sel=None):
         opt_bytes = s.get("forecast_input_bytes")
         if opt_bytes:
             st.download_button(
-                "⬇️ Download Optimization Input",
+                "Download Optimization Input",
                 data=opt_bytes,
                 file_name="Input_Data_Adjusted.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 width='stretch',
             )
         else:
-            st.button("⬇️ Optimization Input", disabled=True, width='stretch')
+            st.button("Optimization Input", disabled=True, width='stretch')
     with col_d3:
-        if st.button("▶️ Proceed to Optimization →", type="primary", width='stretch'):
+        if st.button("Proceed to Optimization →", type="primary", width='stretch'):
             s.active_module = "optimize"
             st.rerun()
 
