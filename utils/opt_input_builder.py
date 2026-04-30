@@ -172,13 +172,15 @@ def build_optimization_input(
             else:
                 iini_map[sku] = 0.0
 
-    # Build I_ini as a single-column wide pivot (all months get the same I_ini value)
-    # The optimizer uses INITIAL_INVENTORY_PERIOD = 1 → first month column value
+    # Build I_ini pivot — only the FIRST forecast month carries the initial inventory value.
+    # Subsequent months are 0 because the optimizer derives their opening stock from
+    # the previous period's I_End (via get_prev_inventory_expr), not from this table.
+    first_month = month_cols[0] if month_cols else None
     iini_rows = []
     for sku in sel_skus:
         row = {"Item No.": sku}
         for m in month_cols:
-            row[m] = iini_map.get(sku, 0.0)
+            row[m] = iini_map.get(sku, 0.0) if m == first_month else 0.0
         iini_rows.append(row)
     iini_pivot = pd.DataFrame(iini_rows)[["Item No."] + month_cols]
 

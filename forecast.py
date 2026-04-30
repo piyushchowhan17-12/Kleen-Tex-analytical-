@@ -567,7 +567,7 @@ def _render_results(s, sku_sel=None):
                 rows_html += (
                     f'<tr style="border-left:3px solid transparent;">' +
                     f'<td style="{_TD}font-family:DM Mono,monospace;">{row["Period"]}</td>' +
-                    f'<td style="{_TD}color:#f5a623;font-family:DM Mono,monospace;">{row["Demand_Prediction"]:.1f}</td>' +
+                    f'<td style="{_TD}color:#f5a623;font-family:DM Mono,monospace;">{int(round(row["Demand_Prediction"]))}</td>' +
                     f'<td style="{_TD}font-family:DM Mono,monospace;">{row["Lower"]:.1f}</td>' +
                     f'<td style="{_TD}font-family:DM Mono,monospace;">{row["Upper"]:.1f}</td>' +
                     '</tr>'
@@ -807,7 +807,14 @@ def _render_results(s, sku_sel=None):
     with col_d1:
         buf = io.BytesIO()
         with pd.ExcelWriter(buf, engine="openpyxl") as w:
-            detail_df.to_excel(w, sheet_name="Forecast_Detail", index=False)
+            detail_cols = ["SKU", "Year", "Month", "Imputed_Demand", "Demand_Prediction",
+                           "Unit Inventory Cost", "m2/item",
+                           "Ending_Inventory_Qty", "Opening_Inventory_Qty"]
+            export_cols = [c for c in detail_cols if c in detail_df.columns]
+            detail_export = detail_df[export_cols].rename(
+                columns={"Demand_Prediction": "Predicted Demand"}
+            )
+            detail_export.to_excel(w, sheet_name="Forecast_Detail", index=False)
             if not summary_df.empty:
                 summary_df.to_excel(w, sheet_name="Model_Summary", index=False)
             if not fold_df.empty:

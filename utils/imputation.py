@@ -57,6 +57,12 @@ def impute_demand(df: pd.DataFrame) -> pd.DataFrame:
     # 2F — fill remaining NaN with original Monthly_QTY (from original)
     df["Imputed_Demand"] = df["Imputed_Demand"].fillna(df["Monthly_QTY"])
 
+    # 2G — ceil to next integer (demand must be whole units; round up to avoid shortage)
+    import math
+    df["Imputed_Demand"] = df["Imputed_Demand"].apply(
+        lambda x: int(math.ceil(x)) if pd.notna(x) else pd.NA
+    ).astype("Int64")
+
     # Drop helper column (from original)
     df = df.drop(columns=["Prev_Ending_Inventory_Qty"])
 
