@@ -9,6 +9,7 @@ Summary columns match the original: Average_Validation_MAE, Average_Validation_M
 import warnings
 warnings.filterwarnings("ignore")
 
+import math
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -529,7 +530,7 @@ def forecast_future_for_sku(sku_df, forecast_months, last_date):
     for dt, pred in zip(future_dates, preds):
         prediction_rows.append({
             "Date":dt,"Year":int(dt.year),"Month":int(dt.month),
-            "Demand_Prediction":round(float(pred),4),
+            "Demand_Prediction":math.ceil(float(pred)),
             "Best_Model":dominant_model,"Demand_Type":dominant_type,
             "Best_Validation_MAE":avg_mae,"Best_Validation_MAPE":avg_mape,
             "Validation_Note":notes+(f" | {fc_note}" if fc_note!="ok" else ""),
