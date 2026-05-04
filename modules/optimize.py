@@ -724,7 +724,11 @@ def _render_results(s):
 
                 xa = lbl + "__a"   # opening  — shared by spike bottom too
                 xb = lbl + "__a"   # post      — SAME x as xa → vertical line
-                xc = lbl + "__c"   # ending
+                # Ending Inv of period N lands at the Opening x of period N+1,
+                # so the line flows seamlessly into the next period's open point.
+                # For the last period there is no N+1, so fall back to lbl + "__c".
+                next_lbl = per_labels[idx + 1] if idx + 1 < len(per_labels) else None
+                xc = (next_lbl + "__a") if next_lbl is not None else (lbl + "__c")
 
                 # Full inventory path
                 x_main += [xa, xb, xc]
@@ -914,7 +918,7 @@ def _render_results(s):
 
 
         st.markdown(
-            '<div class="sc-card-title" style="margin-bottom:4px">📋 (s,S) Reorder Policy Levels</div>'
+            '<div class="sc-card-title" style="margin-bottom:4px">(s,S) Reorder Policy Levels</div>'
             '<div class="sc-card-sub" style="margin-bottom:12px">Order when Opening Inventory ≤ s; order up to S</div>',
             unsafe_allow_html=True,
         )
@@ -970,7 +974,7 @@ def _render_results(s):
             st.session_state["pl_flt_per"]  = period_opts[0]
 
         st.markdown(
-            '<div class="sc-card-title" style="margin-bottom:4px">📋 Full Period-by-Period Plan</div>'
+            '<div class="sc-card-title" style="margin-bottom:4px">Full Period-by-Period Plan</div>'
             '<div class="sc-card-sub" style="margin-bottom:12px">Inventory, orders and shortages by item and period</div>',
             unsafe_allow_html=True,
         )
@@ -1091,7 +1095,7 @@ def _render_results(s):
     # Download — Period_Results uses the same transformed table shown in UI
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
     st.markdown('<div class="sc-card">'
-                '<div class="sc-card-title">💾 Export Results</div>',
+                '<div class="sc-card-title">Export Results</div>',
                 unsafe_allow_html=True)
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as w:
@@ -1152,7 +1156,7 @@ def _render_results(s):
 def _load_opt_input_from_file(uploaded_file) -> dict:
     """Load optimization input from user-uploaded Excel (same format as Input_Data_Adjusted.py output)."""
     xls        = pd.ExcelFile(uploaded_file)
-    demand_raw = pd.read_excel(xls, sheet_name="Demand",        header=None)
+    demand_raw = pd.read_excel(xls, sheet_name="Demand", header=None)
     T = demand_raw.iloc[1, 1:].tolist()
     I = demand_raw.iloc[2:, 0].tolist()
     demand_df          = demand_raw.iloc[2:, 1:].copy()
