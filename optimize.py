@@ -407,7 +407,7 @@ def render():
     st.markdown(f"""
     <div class="topbar">
         <div>
-            <div class="topbar-title">⚙️ Module 3 — Inventory Optimization</div>
+            <div class="topbar-title">Module 3 — Inventory Optimization</div>
             <div class="topbar-sub">(s,S) policy · SCIP solver · Minimize Z₁ holding + Z₂ setup</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
@@ -446,10 +446,10 @@ def render():
 
     col_run, col_clr, _ = st.columns([1, 1, 4])
     with col_run:
-        run_btn = st.button("🚀 Solve Optimization", type="primary",
+        run_btn = st.button("Solve Optimization", type="primary",
                             use_container_width=True, disabled=(data_dict is None))
     with col_clr:
-        if st.button("🔄 Clear Results", type="secondary", use_container_width=True):
+        if st.button("Clear Results", type="secondary", use_container_width=True):
             s.optimization_result = None
             st.rerun()
 
@@ -544,7 +544,7 @@ def _render_results(s):
     if s.get("_opt_just_solved"):
         s._opt_just_solved = False
         msg = st.success("✅ Optimization is Solved")
-        time.sleep(3)
+        time.sleep(2)
         msg.empty()
 
     policy_df = res.get("policy_df", pd.DataFrame())
@@ -764,7 +764,7 @@ def _render_results(s):
                 x_inv.append(x_open)
                 y_inv.append(open_v)
                 hover_inv.append(
-                    f"<b>{lbl}</b><br>📦 Opening Inv: {open_v:.2f} units"
+                    f"<b>{lbl}</b><br>Opening Inv: {open_v:.2f} units"
                 )
 
                 # Post-restock point (= opening when no order, higher when order placed)
@@ -782,7 +782,7 @@ def _render_results(s):
                 x_inv.append(x_end)
                 y_inv.append(end_v)
                 hover_inv.append(
-                    f"<b>{lbl}</b><br>📉 Ending Inv: {end_v:.2f} units"
+                    f"<b>{lbl}</b><br>Ending Inv: {end_v:.2f} units"
                     f"<br>Demand: {d_v:.2f} units"
                 )
 
@@ -975,7 +975,7 @@ def _render_results(s):
         with pol_f1:
             pol_flt_item = st.text_input("Item", placeholder="Search item…", key="pol_flt_item", label_visibility="collapsed")
         with pol_f2:
-            pol_reset = st.button("🔄 Reset", key="pol_flt_reset", use_container_width=True)
+            pol_reset = st.button("Reset", key="pol_flt_reset", use_container_width=True)
         tbl_policy_f = tbl_policy.copy()
         if pol_flt_item:
             tbl_policy_f = tbl_policy_f[tbl_policy_f["Item"].str.contains(pol_flt_item, case=False, na=False)]
@@ -991,7 +991,7 @@ def _render_results(s):
             rows_html += f'<tr style="border-left:3px solid transparent;">{cells}</tr>'
         st.markdown(
             '<div class="sc-card">'
-            '<div class="sc-card-title" style="margin-bottom:4px">📋 (s,S) Reorder Policy Levels</div>'
+            '<div class="sc-card-title" style="margin-bottom:4px">(s,S) Reorder Policy Levels</div>'
             '<div class="sc-card-sub" style="margin-bottom:14px">Order when Opening Inventory ≤ s; order up to S</div>'
             '<div style="overflow-x:auto;overflow-y:auto;max-height:400px;">'
             '<table style="width:100%;border-collapse:collapse;background:#1d3048;border-radius:8px;overflow:hidden;">'
@@ -1016,7 +1016,7 @@ def _render_results(s):
             period_opts = ["All"] + [str(p) for p in all_periods]
             pl_flt_per  = st.selectbox("Period", period_opts, key="pl_flt_per", label_visibility="collapsed")
         with pl_f3:
-            pl_reset = st.button("🔄 Reset", key="pl_flt_reset", use_container_width=True)
+            pl_reset = st.button("Reset", key="pl_flt_reset", use_container_width=True)
         if pl_flt_item:
             tbl_plan = tbl_plan[tbl_plan["Item"].str.contains(pl_flt_item, case=False, na=False)]
         if pl_flt_per != "All":
@@ -1114,7 +1114,7 @@ def _render_results(s):
         # The extra padding-top on tbody compensates so first row isn't hidden behind sticky header
         st.markdown(
             '<div class="sc-card">'
-            '<div class="sc-card-title" style="margin-bottom:4px">📋 Full Period-by-Period Plan</div>'
+            '<div class="sc-card-title" style="margin-bottom:4px">Full Period-by-Period Plan</div>'
             '<div class="sc-card-sub" style="margin-bottom:14px">Inventory, orders and shortages by item and period</div>'
             '<div style="overflow-x:auto;overflow-y:auto;max-height:460px;border-radius:6px;">'
             '<table style="width:100%;border-collapse:collapse;background:#1d3048;min-width:1100px;">'
@@ -1129,7 +1129,7 @@ def _render_results(s):
     # Download — Period_Results uses the same transformed table shown in UI
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
     st.markdown('<div class="sc-card">'
-                '<div class="sc-card-title">💾 Export Results</div>',
+                '<div class="sc-card-title">Export Results</div>',
                 unsafe_allow_html=True)
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as w:
@@ -1181,7 +1181,7 @@ def _render_results(s):
         if not obj_df.empty:
             obj_df.to_excel(w, sheet_name="Objective_Breakdown", index=False)
 
-    st.download_button("⬇️ Download Results (.xlsx)", data=buf.getvalue(),
+    st.download_button("Download Results (.xlsx)", data=buf.getvalue(),
                        file_name="KleenTex_Optimization_Results.xlsx",
                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -1190,7 +1190,7 @@ def _render_results(s):
 def _load_opt_input_from_file(uploaded_file) -> dict:
     """Load optimization input from user-uploaded Excel (same format as Input_Data_Adjusted.py output)."""
     xls        = pd.ExcelFile(uploaded_file)
-    demand_raw = pd.read_excel(xls, sheet_name="Demand",        header=None)
+    demand_raw = pd.read_excel(xls, sheet_name="Demand", header=None)
     T = demand_raw.iloc[1, 1:].tolist()
     I = demand_raw.iloc[2:, 0].tolist()
     demand_df          = demand_raw.iloc[2:, 1:].copy()

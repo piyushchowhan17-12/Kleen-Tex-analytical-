@@ -436,6 +436,51 @@ def choose_best_model_for_fold(train_series, validation_series):
             "Validation_Note":note_text}
 
 
+def score_all_models_for_fold(train_series, validation_series):
+    """
+    Run every candidate model against the validation window and return
+    {model_name: score} for all models that ran successfully.
+    Score formula: MAE + 0.15 * RMSE + penalty  (same as choose_best_model_for_fold).
+    """
+    demand_type      = classify_demand(train_series)
+    validation_dates = validation_series.index
+    y_val            = validation_series.values.astype(float)
+
+    if len(train_series) < 5 or len(validation_series.dropna()) == 0:
+        return {}
+
+    candidates = [
+        ("RandomForest_2Stage", lambda: fit_predict_random_forest_v2(train_series, validation_dates)),
+        ("TSB",                 lambda: fit_predict_tsb(train_series, y_val)),
+        ("SeasonalNaive",       lambda: fit_predict_seasonal_naive(train_series, validation_dates)),
+        ("MovingAverage_3",     lambda: fit_predict_moving_average(train_series, len(validation_dates), 3)),
+        ("LastValue",           lambda: fit_predict_last_value(train_series, len(validation_dates))),
+    ]
+    ok, _ = sarima_eligible(train_series)
+    if ok:
+        candidates.append(("SARIMA", lambda: fit_predict_sarima_v2(train_series, len(validation_dates))))
+
+    scores = {}
+    hist_nzr = float(np.mean(np.asarray(train_series) > 0))
+    val_std  = float(np.std(y_val)) if len(y_val) > 1 else 0.0
+
+    for model_name, func in candidates:
+        try:
+            preds, _ = func()
+            mae, _, rmse = evaluate_predictions(y_val, preds)
+            pred_nzr = float(np.mean(np.asarray(preds) > 0)) if preds else 0.0
+            pred_std = float(np.std(preds)) if len(preds) > 1 else 0.0
+            penalty  = 0.0
+            if hist_nzr < 0.35 and pred_nzr > hist_nzr + 0.25: penalty += 5.0
+            if pred_std == 0.0 and val_std > 0.0:               penalty += 3.0
+            if demand_type == "intermittent" and model_name == "TSB": penalty -= 1.0
+            scores[model_name] = float(mae + 0.15 * rmse + penalty)
+        except Exception:
+            pass  # model skipped for this fold
+
+    return scores
+
+
 def forecast_with_model(train_series, model_name, forecast_dates):
     if model_name=="SARIMA":              return fit_predict_sarima_v2(train_series, len(forecast_dates))
     if model_name=="TSB":                 return fit_predict_tsb(train_series, len(forecast_dates))
@@ -465,6 +510,10 @@ def forecast_future_for_sku(sku_df, forecast_months, last_date):
     all_folds = generate_rolling_folds(last_date, forecast_months)
     fold_summaries = []
 
+    # Accumulate per-model scores across folds: {model_name: [score, ...]}
+    accumulated_scores = {}
+    fold_demand_types  = []
+
     for fi in all_folds:
         fold_num  = fi["fold"]
         val_start = fi["validation_start"]
@@ -483,34 +532,86 @@ def forecast_future_for_sku(sku_df, forecast_months, last_date):
                 "Best_Model":"Skipped","Demand_Type":"insufficient",
                 "Best_Validation_MAE":np.nan,"Best_Validation_MAPE":np.nan,
                 "Validation_Note":"Missing train or validation rows.",
+                "Model_Scores":"",
             })
             continue
 
         train_series = get_model_demand_series(train_window)
         val_series   = get_model_demand_series(val_window)
-        model_info   = choose_best_model_for_fold(train_series, val_series)
+        demand_type  = classify_demand(train_series)
+        fold_demand_types.append(demand_type)
+
+        fold_scores = score_all_models_for_fold(train_series, val_series)
+
+        for model_name, score in fold_scores.items():
+            accumulated_scores.setdefault(model_name, []).append(score)
+
+        # Record the fold-level winner (lowest score this fold) for transparency
+        if fold_scores:
+            fold_winner = min(fold_scores, key=fold_scores.get)
+            fold_winner_score = fold_scores[fold_winner]
+            scores_str = " | ".join(
+                f"{m}:{s:.3f}" for m, s in sorted(fold_scores.items(), key=lambda x: x[1])
+            )
+        else:
+            fold_winner       = "Skipped"
+            fold_winner_score = np.nan
+            scores_str        = ""
+
+        # Also fetch MAE/MAPE of the fold winner for the summary columns
+        fold_mae = fold_mape = np.nan
+        if fold_scores and fold_winner != "Skipped":
+            # Re-run winner briefly to get MAE/MAPE for display (cheap; already cached above)
+            try:
+                validation_dates = val_series.index
+                y_val = val_series.values.astype(float)
+                preds, _ = forecast_with_model(train_series, fold_winner, validation_dates)
+                fold_mae, fold_mape, _ = evaluate_predictions(y_val, preds)
+            except Exception:
+                pass
 
         fold_summaries.append({
             "Fold":fold_num,
             "Validation_Period":f"{val_start.strftime('%Y-%m')} to {val_end.strftime('%Y-%m')}",
             "Forecast_Period":  f"{fc_start.strftime('%Y-%m')} to {fc_end.strftime('%Y-%m')}",
-            "Best_Model":            model_info["Best_Model"],
-            "Demand_Type":           model_info["Demand_Type"],
-            "Best_Validation_MAE":   model_info["Best_Validation_MAE"],
-            "Best_Validation_MAPE":  model_info["Best_Validation_MAPE"],
-            "Validation_Note":       model_info["Validation_Note"],
+            "Best_Model":       fold_winner,
+            "Demand_Type":      demand_type,
+            "Best_Validation_MAE":  float(fold_mae)  if np.isfinite(float(fold_mae  if fold_mae  is not None else np.nan)) else np.nan,
+            "Best_Validation_MAPE": float(fold_mape) if np.isfinite(float(fold_mape if fold_mape is not None else np.nan)) else np.nan,
+            "Validation_Note":  f"Fold winner: {fold_winner} (score={fold_winner_score:.3f})" if fold_winner != "Skipped" else "No models ran.",
+            "Model_Scores":     scores_str,
         })
 
-    usable = [f for f in fold_summaries if f["Best_Model"]!="Skipped"]
-    if usable:
-        from collections import Counter
-        dominant_model = Counter([f["Best_Model"] for f in usable]).most_common(1)[0][0]
-        dominant_type  = pd.Series([f["Demand_Type"] for f in usable]).mode()[0]
+    # Select dominant model: average score across folds, require ≥2 folds
+    MIN_FOLDS = 2
+    eligible = {m: scores for m, scores in accumulated_scores.items() if len(scores) >= MIN_FOLDS}
+
+    usable = [f for f in fold_summaries if f["Best_Model"] != "Skipped"]
+    if eligible:
+        avg_scores     = {m: float(np.mean(s)) for m, s in eligible.items()}
+        dominant_model = min(avg_scores, key=avg_scores.get)
+        dominant_type  = (pd.Series(fold_demand_types).mode()[0]
+                          if fold_demand_types else "insufficient")
         avg_mae        = float(np.nanmean([f["Best_Validation_MAE"]  for f in usable]))
         avg_mape       = float(np.nanmean([f["Best_Validation_MAPE"] for f in usable]))
-        notes          = " | ".join([f"Fold {f['Fold']}: {f['Best_Model']}" for f in usable])
+        score_summary  = " | ".join(
+            f"{m}:avg={s:.3f}(n={len(accumulated_scores[m])})"
+            for m, s in sorted(avg_scores.items(), key=lambda x: x[1])
+        )
+        notes = (f"Dominant model selected by avg score across folds. "
+                 f"Scores: {score_summary}")
+    elif usable:
+        # Fall back: at least one fold ran but no model hit the ≥2-fold threshold
+        from collections import Counter
+        dominant_model = Counter([f["Best_Model"] for f in usable]).most_common(1)[0][0]
+        dominant_type  = (pd.Series(fold_demand_types).mode()[0]
+                          if fold_demand_types else "insufficient")
+        avg_mae        = float(np.nanmean([f["Best_Validation_MAE"]  for f in usable]))
+        avg_mape       = float(np.nanmean([f["Best_Validation_MAPE"] for f in usable]))
+        notes          = (f"Fewer than {MIN_FOLDS} folds per model; fell back to plurality vote. "
+                          + " | ".join(f"Fold {f['Fold']}: {f['Best_Model']}" for f in usable))
     else:
-        dominant_model,dominant_type = "LastValue","insufficient"
+        dominant_model, dominant_type = "LastValue", "insufficient"
         avg_mae = avg_mape = np.nan
         notes   = "All folds skipped."
 

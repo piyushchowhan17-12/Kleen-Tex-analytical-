@@ -56,8 +56,7 @@ def render():
     st.markdown(f"""
     <div class="topbar">
         <div>
-            <div class="topbar-title">🧹 Module 1 — Data Preprocessing &amp; Imputation</div>
-            <div class="topbar-sub">Raw data ingestion · Demand imputation · ADI/CV² classification · SKU filtering</div>
+            <div class="topbar-title">Module 1 — Data Preprocessing &amp; Imputation</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <span class="badge-pill pill-teal">✓ Imputation Applied</span>
@@ -72,7 +71,7 @@ def render():
     # ════════════════════════════════════════════════════════════════════════
     st.markdown(
         f'<div class="info-box" style="margin-bottom:12px;">'
-        f'📂 <strong>{filename}</strong> — {n_rows:,} rows · {n_skus_raw:,} SKUs · {len(sel_sku)} selected'
+        f'<strong>{filename}</strong> — {n_rows:,} rows · {n_skus_raw:,} SKUs · {len(sel_sku)} selected'
         f'</div>',
         unsafe_allow_html=True,
     )
@@ -83,7 +82,7 @@ def render():
     with st.container(border=True):
         st.markdown(
             '<p style="font-family:Fraunces,Georgia,serif;font-weight:300;'
-            'font-size:16px;color:#f4f8fb;margin:0 0 4px 0;">🎯 Re-select SKUs</p>',
+            'font-size:16px;color:#f4f8fb;margin:0 0 4px 0;">Re-select SKUs</p>',
             unsafe_allow_html=True,
         )
         _render_sku_selection_inline(df_loaded, sel_sku)
@@ -124,8 +123,7 @@ def render():
     # ════════════════════════════════════════════════════════════════════════
     # SECTION E — ADI / CV² Threshold Controls + Charts
     # ════════════════════════════════════════════════════════════════════════
-    st.markdown('<div class="sc-card-title">⚙️ SKU Classification — ADI / CV² Thresholds</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sc-card-sub" style="margin-bottom:14px">Adjust thresholds to filter SKUs for forecasting. Only SKUs within both thresholds proceed to Module 2.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sc-card-title">SKU Classification — ADI / CV² Thresholds</div>', unsafe_allow_html=True)
 
     col_ctrl1, col_ctrl2, col_ctrl3, _ = st.columns([1, 1, 1, 1])
     with col_ctrl1:
@@ -182,8 +180,7 @@ def render():
     # ════════════════════════════════════════════════════════════════════════
 
     st.markdown(
-        '<div class="sc-card-title" style="margin-bottom:4px">📋 SKU Classification Table</div>'
-        '<div class="sc-card-sub" style="margin-bottom:12px">SKU filter for forecasting pipeline</div>',
+        '<div class="sc-card-title" style="margin-bottom:4px">SKU Classification Table</div>',
         unsafe_allow_html=True,
     )
 
@@ -353,7 +350,7 @@ def _render_upload_section():
     """File upload card — shown only when raw_data is None."""
     s = st.session_state
 
-    st.markdown('<div class="sc-card-title" style="margin-bottom:12px">📂 Upload Raw Data File</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sc-card-title" style="margin-bottom:12px">Upload Raw Data File</div>', unsafe_allow_html=True)
 
     col1, col2 = st.columns([2, 1])
     with col1:
@@ -370,7 +367,9 @@ def _render_upload_section():
             • Year, Month<br>
             • Monthly_QTY<br>
             • Opening_Inventory_Qty<br>
-            • Ending_Inventory_Qty
+            • Ending_Inventory_Qty<br>
+            • Unit_Inventory_Cost<br>
+            • m2_Per_Item
         </div>
         """, unsafe_allow_html=True)
 
@@ -413,8 +412,6 @@ def _render_upload_section():
 
     # SKU selection
     st.markdown('<div class="sc-card-title">SKU Selection</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sc-card-sub" style="margin-bottom:16px">Choose how many SKUs to include. Top N by chosen method, or pick manually.</div>', unsafe_allow_html=True)
-
     selected_skus = _render_sku_selector(df, skus, n_skus, key_suffix="initial")
 
     st.markdown(f"""

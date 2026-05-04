@@ -30,7 +30,6 @@ def render():
     <div class="topbar">
         <div>
             <div class="topbar-title">Module 2 — Demand Forecasting</div>
-            <div class="topbar-sub">Rolling validation · RandomForest 2-Stage · SARIMA · TSB · Multi-model selection</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
             {'<span class="badge-pill pill-teal">✓ Forecast Ready</span>' if has_fc else '<span class="badge-pill pill-slate">⏳ Not Run</span>'}
