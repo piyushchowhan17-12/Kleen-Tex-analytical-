@@ -4,9 +4,12 @@ Supply Chain Analytics Dashboard — Main Entry Point
 
 import streamlit as st
 
+from PIL import Image as _PIL_Image
+_favicon = _PIL_Image.open("favicon.jpeg")
+
 st.set_page_config(
     page_title="Supply Chain Analytics | Demand Forecasting",
-    page_icon="📦",
+    page_icon=_favicon,
     layout="wide",
     initial_sidebar_state="expanded",
 )
