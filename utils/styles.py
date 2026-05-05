@@ -74,6 +74,13 @@ section[data-testid="stSidebar"] > div:first-child {
     max-width: var(--sidebar-w) !important;
     width:     var(--sidebar-w) !important;
 }
+/* Hide ALL sidebar collapse/expand controls — sidebar is permanently fixed */
+button[data-testid="collapsedControl"],
+[data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebarCollapseButton"] button {
+    display: none !important;
+    pointer-events: none !important;
+}
 
 /* ── Brand block ── */
 .brand-block {
@@ -85,7 +92,7 @@ section[data-testid="stSidebar"] > div:first-child {
 .brand-title {
     font-family: 'Inter', 'DM Sans', sans-serif;
     font-weight: 600;
-    font-size: 15px;
+    font-size: 20px;
     color: var(--white);
     line-height: 1.25;
     letter-spacing: -0.02em;
@@ -93,7 +100,7 @@ section[data-testid="stSidebar"] > div:first-child {
 .brand-sub {
     font-family: 'Inter', 'DM Sans', sans-serif;
     font-weight: 400;
-    font-size: 10px;
+    font-size: 15px;
     color: var(--slate);
     margin-top: 4px;
     letter-spacing: .06em;
@@ -102,7 +109,7 @@ section[data-testid="stSidebar"] > div:first-child {
 
 /* ── Nav section label ── */
 .nav-section-label {
-    font-size: 10px;
+    font-size: 16px;
     text-transform: uppercase;
     letter-spacing: .16em;
     color: var(--slate2);
@@ -112,16 +119,19 @@ section[data-testid="stSidebar"] > div:first-child {
     text-align: left;
 }
 
-/* ── Nav buttons — centered icon+label style ── */
+/* ── Nav buttons — left-aligned icon+label style ── */
 section[data-testid="stSidebar"] .stButton > button {
     background: transparent !important;
     border: none !important;
     border-left: 3px solid transparent !important;
     color: var(--slate) !important;
     font-family: 'Inter', 'DM Sans', sans-serif !important;
-    font-size: 14px !important;
+    font-size: 20px !important;
     font-weight: 500 !important;
     text-align: left !important;
+    justify-content: flex-start !important;
+    display: flex !important;
+    align-items: center !important;
     padding: 13px 20px !important;
     border-radius: 0 !important;
     transition: all .15s ease !important;
@@ -131,6 +141,14 @@ section[data-testid="stSidebar"] .stButton > button {
     text-overflow: ellipsis !important;
     line-height: 1.4 !important;
     letter-spacing: 0.01em !important;
+}
+section[data-testid="stSidebar"] .stButton > button p,
+section[data-testid="stSidebar"] .stButton > button div,
+section[data-testid="stSidebar"] .stButton > button span {
+    text-align: left !important;
+    font-size: 20px !important;
+    width: 100% !important;
+    margin: 0 !important;
 }
 section[data-testid="stSidebar"] .stButton > button:hover {
     background: rgba(27,184,160,0.06) !important;
@@ -165,7 +183,7 @@ section[data-testid="stSidebar"] .stButton > button::first-letter {
     align-items: center;
     gap: 6px;
     padding: 4px 16px;
-    font-size: 11px;
+    font-size: 14px;
     color: var(--text2);
     font-family: 'Inter', 'DM Sans', sans-serif;
 }
@@ -177,7 +195,7 @@ section[data-testid="stSidebar"] .stButton > button::first-letter {
 }
 .sidebar-footer {
     padding: 10px 16px;
-    font-size: 10px;
+    font-size: 12px;
     color: var(--slate2);
     border-top: 1px solid var(--border);
     margin-top: 10px;
@@ -201,7 +219,7 @@ section[data-testid="stSidebar"] .stButton > button::first-letter {
 .topbar-title {
     font-family: 'Fraunces', serif;
     font-weight: 300;
-    font-size: 24px;
+    font-size: 30px;
     color: var(--white);
 }
 .topbar-sub {
@@ -215,7 +233,7 @@ section[data-testid="stSidebar"] .stButton > button::first-letter {
     gap: 5px;
     padding: 4px 12px;
     border-radius: 20px;
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 500;
     font-family: 'DM Mono', monospace;
 }
@@ -243,11 +261,11 @@ section[data-testid="stSidebar"] .stButton > button::first-letter {
 .sc-card-title {
     font-family: 'Fraunces', serif;
     font-weight: 300;
-    font-size: 16px;
+    font-size: 20px;
     color: var(--white);
 }
 .sc-card-sub {
-    font-size: 11px;
+    font-size: 16px;
     color: var(--slate);
     margin-top: 2px;
 }
@@ -266,7 +284,7 @@ section[data-testid="stSidebar"] .stButton > button::first-letter {
 .metric-tile.accent-rose  { border-left: 3px solid var(--rose); }
 .metric-tile.accent-slate { border-left: 3px solid var(--slate); }
 .metric-label {
-    font-size: 11px;
+    font-size: 16px;
     color: var(--text3);
     text-transform: uppercase;
     letter-spacing: .07em;
@@ -274,12 +292,12 @@ section[data-testid="stSidebar"] .stButton > button::first-letter {
 }
 .metric-value {
     font-family: 'DM Mono', monospace;
-    font-size: 26px;
+    font-size: 28px;
     font-weight: 500;
     color: var(--white);
 }
 .metric-sub {
-    font-size: 11px;
+    font-size: 14px;
     color: var(--slate);
     margin-top: 3px;
 }
@@ -315,10 +333,10 @@ section[data-testid="stSidebar"] .stButton > button::first-letter {
     font-weight: 500;
     color: var(--white);
     margin-bottom: 3px;
-    font-size: 13px;
+    font-size: 16px;
 }
 .step-desc {
-    font-size: 12px;
+    font-size: 16px;
     color: var(--slate);
     line-height: 1.55;
 }
@@ -327,7 +345,7 @@ section[data-testid="stSidebar"] .stButton > button::first-letter {
     padding: 1px 6px;
     background: var(--navy3);
     border-radius: 3px;
-    font-size: 11px;
+    font-size: 14px;
     color: var(--amber);
     font-family: 'DM Mono', monospace;
     margin: 1px;
@@ -344,7 +362,7 @@ section[data-testid="stSidebar"] .stButton > button::first-letter {
 .stDataFrame thead tr th {
     background: var(--navy3) !important;
     color: var(--slate) !important;
-    font-size: 10px !important;
+    font-size: 16px !important;
     text-transform: uppercase !important;
     letter-spacing: .07em !important;
 }
@@ -403,7 +421,7 @@ section[data-testid="stSidebar"] .stButton > button::first-letter {
 .stSelectbox label, .stNumberInput label, .stSlider label,
 .stTextInput label, .stFileUploader label, .stMultiSelect label {
     color: var(--text3) !important;
-    font-size: 11px !important;
+    font-size: 14px !important;
     text-transform: uppercase !important;
     letter-spacing: .07em !important;
     font-family: 'DM Sans', sans-serif !important;
@@ -439,7 +457,7 @@ section[data-testid="stSidebar"] .stButton > button::first-letter {
     display: inline-block;
     padding: 2px 8px;
     border-radius: 12px;
-    font-size: 10px;
+    font-size: 14px;
     font-weight: 500;
     font-family: 'DM Mono', monospace;
 }
@@ -460,13 +478,13 @@ section[data-testid="stSidebar"] .stButton > button::first-letter {
 }
 .opt-result-val {
     font-family: 'DM Mono', monospace;
-    font-size: 32px;
+    font-size: 36px;
     font-weight: 500;
     color: var(--teal);
     margin: 6px 0;
 }
 .opt-result-label {
-    font-size: 11px;
+    font-size: 18px;
     color: var(--slate);
     text-transform: uppercase;
     letter-spacing: .07em;
@@ -490,7 +508,7 @@ section[data-testid="stSidebar"] .stButton > button::first-letter {
     border: 1px solid rgba(27,184,160,.25);
     border-radius: var(--r2);
     padding: 12px 16px;
-    font-size: 13px;
+    font-size: 16px;
     color: var(--text2);
     line-height: 1.6;
     margin-bottom: 14px;
@@ -500,7 +518,7 @@ section[data-testid="stSidebar"] .stButton > button::first-letter {
     border: 1px solid rgba(245,166,35,.25);
     border-radius: var(--r2);
     padding: 12px 16px;
-    font-size: 13px;
+    font-size: 16px;
     color: var(--amber);
     line-height: 1.6;
     margin-bottom: 14px;
@@ -510,7 +528,7 @@ section[data-testid="stSidebar"] .stButton > button::first-letter {
     border: 1px solid rgba(224,92,122,.25);
     border-radius: var(--r2);
     padding: 12px 16px;
-    font-size: 13px;
+    font-size: 16px;
     color: var(--rose);
     line-height: 1.6;
     margin-bottom: 14px;

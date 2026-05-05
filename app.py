@@ -60,7 +60,6 @@ with st.sidebar:
     st.markdown("""
     <div class="brand-block">
         <div class="brand-title">Supply Chain<br>Analytics</div>
-        <span class="brand-sub">DEMAND FORECASTING · v2.0</span>
     </div>
     """, unsafe_allow_html=True)
 

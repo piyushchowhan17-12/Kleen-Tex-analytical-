@@ -30,13 +30,13 @@ MONO_FONT   = "DM Mono, monospace"
 BASE_LAYOUT = dict(
     paper_bgcolor=CARD,
     plot_bgcolor=CARD2,
-    font=dict(family=FONT_FAMILY, color=TEXT2, size=12),
+    font=dict(family=FONT_FAMILY, color=TEXT2, size=14),
     margin=dict(l=50, r=20, t=40, b=40),
     legend=dict(
         bgcolor="rgba(0,0,0,0)",
         bordercolor=BORDER,
         borderwidth=1,
-        font=dict(size=11, color=TEXT2),
+        font=dict(size=14, color=TEXT2),
     ),
     xaxis=dict(
         gridcolor=BORDER,
@@ -65,7 +65,7 @@ BASE_LAYOUT = dict(
 def _apply_base(fig, title="", height=320):
     layout = dict(**BASE_LAYOUT, height=height)
     if title:
-        layout["title"] = dict(text=title, font=dict(family="Fraunces, serif", size=16, color=WHITE), x=0.01)
+        layout["title"] = dict(text=title, font=dict(family="Fraunces, serif", size=20, color=WHITE), x=0.01)
     fig.update_layout(**layout)
     return fig
 
@@ -217,7 +217,7 @@ def demand_type_donut(type_counts: dict, height=240) -> go.Figure:
         labels=labels, values=values,
         hole=0.6,
         marker=dict(colors=clrs, line=dict(color=CARD, width=2)),
-        textfont=dict(size=11, color=WHITE),
+        textfont=dict(size=13, color=WHITE),
         hovertemplate="<b>%{label}</b><br>%{value} SKUs (%{percent})<extra></extra>",
     ))
 
@@ -225,7 +225,7 @@ def demand_type_donut(type_counts: dict, height=240) -> go.Figure:
     fig.add_annotation(
         text=f"<b>{total}</b><br><span style='font-size:10px'>SKUs</span>",
         x=0.5, y=0.5, showarrow=False,
-        font=dict(size=18, color=WHITE, family=MONO_FONT),
+        font=dict(size=20, color=WHITE, family=MONO_FONT),
         align="center",
     )
 
@@ -451,37 +451,10 @@ def objective_waterfall(obj_df: pd.DataFrame, height=280) -> go.Figure:
             text=f"<b>Total: ${total_val:,.0f}</b>",
             showarrow=False,
             bgcolor=NAVY3, bordercolor=TEAL, borderwidth=1,
-            font=dict(size=13, color=TEAL, family=MONO_FONT),
+            font=dict(size=15, color=TEAL, family=MONO_FONT),
             align="right",
         )
 
     fig = _apply_base(fig, title="Objective Function Breakdown", height=height)
     fig.update_layout(yaxis_title="Cost ($)")
-    return fig
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 10. SKU ORDER ACTIVITY HEATMAP
-# ─────────────────────────────────────────────────────────────────────────────
-def order_heatmap(plan_df: pd.DataFrame, max_items=30, height=400) -> go.Figure:
-    """Binary order/no-order heatmap across periods per item."""
-    pivot = plan_df.pivot_table(index="Item", columns="Period", values="B_it", aggfunc="first")
-    pivot = pivot.head(max_items)
-
-    fig = go.Figure(go.Heatmap(
-        z=pivot.values,
-        x=[str(c) for c in pivot.columns],
-        y=pivot.index.tolist(),
-        colorscale=[[0, CARD2], [1, TEAL]],
-        showscale=False,
-        hovertemplate="Item: %{y}<br>Period: %{x}<br>Order: %{z}<extra></extra>",
-        xgap=1, ygap=1,
-    ))
-
-    fig = _apply_base(fig, title="Order Activity Heatmap (1 = order placed)", height=height)
-    fig.update_layout(
-        xaxis=dict(side="bottom", tickangle=-45, tickfont=dict(size=10)),
-        yaxis=dict(tickfont=dict(size=10), autorange="reversed"),
-        margin=dict(l=130, r=20, t=50, b=60),
-    )
     return fig

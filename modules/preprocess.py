@@ -235,7 +235,7 @@ def render():
         bg, fg = colors.get(v, ("rgba(107,133,158,.18)", "#8fa3b8"))
         return (
             f'<span style="display:inline-block;padding:2px 10px;border-radius:12px;' +
-            f'font-size:11px;font-weight:500;font-family:DM Mono,monospace;' +
+            f'font-size:16px;font-weight:500;font-family:DM Mono,monospace;' +
             f'background:{bg};color:{fg};">{v}</span>'
         )
 
@@ -243,30 +243,30 @@ def render():
         if passed:
             return (
                 '<span style="display:inline-block;padding:2px 12px;border-radius:12px;' +
-                'font-size:11px;font-weight:600;font-family:DM Mono,monospace;' +
+                'font-size:16px;font-weight:600;font-family:DM Mono,monospace;' +
                 'background:rgba(27,184,160,.18);color:#1bb8a0;border:1px solid rgba(27,184,160,.35);">PASS</span>'
             )
         return (
             '<span style="display:inline-block;padding:2px 10px;border-radius:12px;' +
-            'font-size:11px;font-weight:600;font-family:DM Mono,monospace;' +
+            'font-size:16px;font-weight:600;font-family:DM Mono,monospace;' +
             'background:rgba(224,92,122,.14);color:#e05c7a;border:1px solid rgba(224,92,122,.3);">EXCLUDE</span>'
         )
 
     def _group_chip(g):
         return (
             f'<span style="display:inline-block;padding:2px 8px;border-radius:4px;' +
-            f'font-size:11px;font-family:DM Mono,monospace;background:#243b55;color:#8fa3b8;">{g}</span>'
+            f'font-size:16px;font-family:DM Mono,monospace;background:#243b55;color:#8fa3b8;">{g}</span>'
         )
 
     def _num_color(v, passed, fmt=".3f"):
         color = "#1bb8a0" if passed else "#e05c7a"
         return f'<span style="color:{color};font-family:DM Mono,monospace;font-weight:500;">{v:{fmt}}</span>'
 
-    th = ("padding:10px 14px;text-align:left;font-size:10px;text-transform:uppercase;"
+    th = ("padding:10px 14px;text-align:left;font-size:16px;text-transform:uppercase;"
           "letter-spacing:.09em;color:#6b859e;font-weight:500;border-bottom:1px solid #243b55;"
           "white-space:nowrap;")
-    td = "padding:11px 14px;font-size:12px;color:#a8c0d4;border-bottom:1px solid #1a2e45;white-space:nowrap;"
-    td_sku = "padding:11px 14px;font-size:12px;color:#f4f8fb;border-bottom:1px solid #1a2e45;font-family:DM Mono,monospace;font-weight:500;"
+    td = "padding:11px 14px;font-size:16px;color:#a8c0d4;border-bottom:1px solid #1a2e45;white-space:nowrap;"
+    td_sku = "padding:11px 14px;font-size:16px;color:#f4f8fb;border-bottom:1px solid #1a2e45;font-family:DM Mono,monospace;font-weight:500;"
 
     total_rows = len(tbl_data)
     rows_html = ""
@@ -478,7 +478,7 @@ def _render_sku_selector(df, skus, n_skus, key_suffix=""):
         )
         selection_method = st.selectbox(
             "Selection method",
-            ["Top N by data completeness", "Top N by total demand", "Manual selection"],
+            ["Top N by Revenue", "Top N by Total Demand", "Manual Selection"],
             key=f"sel_method_{key_suffix}",
         )
     with col_b:
@@ -526,12 +526,12 @@ def _render_sku_selector(df, skus, n_skus, key_suffix=""):
             display_skus = [sk for sk in top_skus if search_val.lower() in sk.lower()] if search_val else top_skus
 
             # Table styles matching SKU Classification Table exactly
-            _th = ("padding:10px 14px;text-align:left;font-size:10px;text-transform:uppercase;"
+            _th = ("padding:10px 14px;text-align:left;font-size:16px;text-transform:uppercase;"
                    "letter-spacing:.09em;color:#6b859e;font-weight:500;border-bottom:1px solid #243b55;"
                    "white-space:nowrap;")
-            _td_sku = ("padding:11px 14px;font-size:12px;color:#f4f8fb;border-bottom:1px solid #1a2e45;"
+            _td_sku = ("padding:11px 14px;font-size:16px;color:#f4f8fb;border-bottom:1px solid #1a2e45;"
                        "font-family:DM Mono,monospace;font-weight:500;")
-            _td_num = ("padding:11px 14px;font-size:12px;color:#a8c0d4;border-bottom:1px solid #1a2e45;"
+            _td_num = ("padding:11px 14px;font-size:16px;color:#a8c0d4;border-bottom:1px solid #1a2e45;"
                        "white-space:nowrap;text-align:right;")
 
             rows_html = "".join(

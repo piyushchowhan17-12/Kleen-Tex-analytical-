@@ -41,8 +41,17 @@ def read_input_data_from_dict(data_dict: dict):
     month_cols        = data_dict.get("month_cols", [])
 
     # ── Mirror read_period_matrix_sheet() for demand ──────────────────────────
-    # T_all from demand pivot columns (numeric months)
-    T_all = sorted([c for c in demand_pivot.columns if c != "Item No."])
+    # T must follow chronological order from month_cols (e.g. [12, 1, 2] for
+    # Dec-2025 → Feb-2026).  A plain sort() would produce [1, 2, 12] which
+    # breaks carry-over when periods span a year boundary.
+    raw_demand_periods = [c for c in demand_pivot.columns if c != "Item No."]
+    if month_cols:
+        # Preserve the chronological order supplied by opt_input_builder.
+        T_all = [m for m in month_cols if m in raw_demand_periods]
+        # Append any periods present in the pivot but missing from month_cols.
+        T_all += [m for m in raw_demand_periods if m not in T_all]
+    else:
+        T_all = sorted(raw_demand_periods)
 
     demand_df = demand_pivot.set_index("Item No.").copy()
     demand_df.index = demand_df.index.astype(str).str.strip()
@@ -53,20 +62,21 @@ def read_input_data_from_dict(data_dict: dict):
     iini_df.index = iini_df.index.astype(str).str.strip()
     iini_df = iini_df.apply(pd.to_numeric, errors="coerce").fillna(0.0)
 
-    # Check periods match — exact logic from original
-    T_iini_all = sorted([c for c in iini_df.columns])
-    # (we tolerate non-matching if INITIAL_INVENTORY_PERIOD is present)
-
-    # Use ALL periods from the workbook — exact from kleen_tex_scip_model_v3_workbook_aligned.py
+    # Use ALL periods from the workbook in chronological order.
     T = T_all
     demand_df = demand_df[[c for c in T if c in demand_df.columns]]
 
-    # Scalar I_ini_i from chosen period column — exact from original
-    # I_ini_all = iini_matrix[INITIAL_INVENTORY_PERIOD].to_dict()
-    if INITIAL_INVENTORY_PERIOD in iini_df.columns:
+    # I_ini is the opening inventory for T[0] — the first chronological period.
+    # iini_pivot stores the value in column month_cols[0] (the first forecast
+    # month), so we read from that column rather than the fixed constant 1.
+    first_period = T[0] if T else INITIAL_INVENTORY_PERIOD
+    if first_period in iini_df.columns:
+        I_ini_all = iini_df[first_period].to_dict()
+    elif INITIAL_INVENTORY_PERIOD in iini_df.columns:
+        # Legacy fallback: constant column index 1.
         I_ini_all = iini_df[INITIAL_INVENTORY_PERIOD].to_dict()
     else:
-        # Fallback: use first available column
+        # Last resort: use whatever the first available column is.
         first_col = iini_df.columns[0] if len(iini_df.columns) > 0 else None
         I_ini_all = iini_df[first_col].to_dict() if first_col is not None else {}
 
@@ -390,7 +400,6 @@ def render():
     <div class="topbar">
         <div>
             <div class="topbar-title">Module 3 — Inventory Optimization</div>
-            <div class="topbar-sub">(s,S) policy · SCIP solver · Minimize Z₁ holding + Z₂ setup</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
             {'<span class="badge-pill pill-teal">✓ Solution Found</span>' if has_result else '<span class="badge-pill pill-slate">⏳ Not Run</span>'}
@@ -420,7 +429,7 @@ def render():
             step=1_000.0, format="%.0f")
         s.warehouse_capacity = warehouse_cap
     with col_p2:
-        fixed_order = st.number_input("Fixed Order Cost F_i ($/order)",
+        fixed_order = st.number_input("Fixed Order Cost F_i (€/order)",
             min_value=0.0, max_value=100_000.0,
             value=float(s.get("fixed_order_cost", DEFAULT_F_I)),
             step=10.0, format="%.2f")
@@ -538,14 +547,14 @@ def _render_results(s):
     _NAVY   = "#0d1b2a"; _NAVY2  = "#1a2e45"; _NAVY3  = "#243b55"
     _TEAL   = "#1bb8a0"; _ROSE   = "#e05c7a"; _AMBER  = "#f5a623"
     _SLATE2 = "#6b859e"; _WHITE  = "#f4f8fb"; _TEXT2  = "#a8c0d4"
-    _TH = ("padding:9px 12px;font-size:10px;text-transform:uppercase;"
+    _TH = ("padding:9px 12px;font-size:16px;text-transform:uppercase;"
            "letter-spacing:.08em;color:#6b859e;font-weight:500;"
            "border-bottom:1px solid #243b55;white-space:nowrap;"
            "font-family:'DM Sans',sans-serif;background:#243b55;")
-    _TD_SKU = ("padding:9px 12px;font-size:12px;color:#f4f8fb;"
+    _TD_SKU = ("padding:9px 12px;font-size:16px;color:#f4f8fb;"
                "border-bottom:1px solid #1a2e45;white-space:nowrap;"
                "font-family:'DM Mono',monospace;font-weight:500;")
-    _TD_NUM = ("padding:9px 12px;font-size:12px;color:#a8c0d4;"
+    _TD_NUM = ("padding:9px 12px;font-size:16px;color:#a8c0d4;"
                "border-bottom:1px solid #1a2e45;white-space:nowrap;"
                "font-family:'DM Mono',monospace;text-align:right;")
 
@@ -595,8 +604,7 @@ def _render_results(s):
                 '<p style="font-family:Fraunces,Georgia,serif;font-weight:300;'
                 'font-size:18px;color:#f4f8fb;margin:0 0 4px 0;">'
                 'Optimization Parameters</p>'
-                '<p style="font-size:12px;color:#6b859e;margin:0 0 16px 0;">'
-                'Set cost and service level parameters</p>',
+                '<p style="font-size:12px;color:#6b859e;margin:0 0 16px 0;">',
                 unsafe_allow_html=True,
             )
             cg, cs = st.columns([1, 2])
@@ -662,7 +670,7 @@ def _render_results(s):
                 '<div style="display:flex;gap:10px;">' +
                 _kpi("REORDER POINT (MIN)", f"{s_val:,.0f}",       "units") +
                 _kpi("ORDER-UPTO (MAX)",    f"{S_val:,.0f}",       "units") +
-                _kpi("TOTAL ANNUAL COST",   f"${total_annual:,.0f}", "$ / year") +
+                _kpi("TOTAL ANNUAL COST",   f"€{total_annual:,.0f}", "€/year") +
                 '</div>',
                 unsafe_allow_html=True,
             )
@@ -670,7 +678,7 @@ def _render_results(s):
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     # ══ ROW 2: Inventory Level Simulation (left) | Cost Breakdown (right) ═════
-    row2_l, row2_r = st.columns([9, 11], gap="large")
+    row2_l, row2_r = st.columns([13, 7], gap="large")
 
     with row2_l:
         if has_sku_data and not pln_sku.empty:
@@ -734,11 +742,11 @@ def _render_results(s):
                 x_main += [xa, xb, xc]
                 y_main += [open_v, post_v, end_v]
                 hover_main += [
-                    f"<b>{lbl}</b><br>📦 Opening Inv: {open_v:.2f} units",
+                    f"<b>{lbl}</b><br>Opening Inv: {open_v:.2f} units",
                     (f"<b>{lbl}</b><br>⚡ After restock: {post_v:.2f} units"
                      f"<br>Production Q_it: +{q_v:.2f}"
                      if is_ord else f"<b>{lbl}</b><br>No order this period"),
-                    f"<b>{lbl}</b><br>📉 Ending Inv: {end_v:.2f} units",
+                    f"<b>{lbl}</b><br>Ending Inv: {end_v:.2f} units",
                 ]
 
                 # Amber Q_it segment — vertical (xa == xb), drawn over the teal line
@@ -796,19 +804,27 @@ def _render_results(s):
             ))
 
             # S line — Order-Up-To (amber dashed)
+            # Use add_hline so the line is geometrically flat across the full
+            # plot area, independent of the categorical x-axis point spacing.
+            fig_sim.add_hline(
+                y=S_val, line=dict(color=_AMBER, width=1.5, dash="dash"),
+            )
             fig_sim.add_trace(go.Scatter(
-                x=x_main, y=[S_val]*len(x_main), mode="lines",
+                x=[None], y=[None], mode="lines",
                 name=f"Order-Up-To S ({S_val:,.1f})",
                 line=dict(color=_AMBER, width=1.5, dash="dash"),
-                hovertemplate=f"Order-Up-To (S): {S_val:.1f}<extra></extra>",
+                showlegend=True,
             ))
 
             # s line — Reorder Point (rose dashed)
+            fig_sim.add_hline(
+                y=s_val, line=dict(color=_ROSE, width=1.5, dash="dash"),
+            )
             fig_sim.add_trace(go.Scatter(
-                x=x_main, y=[s_val]*len(x_main), mode="lines",
+                x=[None], y=[None], mode="lines",
                 name=f"Reorder Point s ({s_val:,.1f})",
                 line=dict(color=_ROSE, width=1.5, dash="dash"),
-                hovertemplate=f"Reorder Point (s): {s_val:.1f}<extra></extra>",
+                showlegend=True,
             ))
 
             fig_sim.update_layout(
@@ -819,7 +835,7 @@ def _render_results(s):
                     x=0.0, y=0.99, xanchor="left", yanchor="top",
                 ),
                 font=dict(family="DM Sans, sans-serif", color=_TEXT2, size=11),
-                margin=dict(l=50, r=20, t=45, b=55),
+                margin=dict(l=50, r=20, t=45, b=80),
                 xaxis=dict(
                     gridcolor=_NAVY3, linecolor=_NAVY3, zeroline=False,
                     showgrid=True, tickfont=dict(color=_SLATE2, size=9), tickangle=-30,
@@ -831,7 +847,7 @@ def _render_results(s):
                     range=[0, y_max],
                     title=dict(text="Units", font=dict(color=_SLATE2, size=10)),
                 ),
-                legend=dict(orientation="h", y=-0.22, x=0.5, xanchor="center",
+                legend=dict(orientation="h", y=-0.28, x=0.5, xanchor="center",
                             bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
                             font=dict(size=10, color=_TEXT2), itemsizing="constant"),
                 hoverlabel=dict(bgcolor=_NAVY2, bordercolor=_BORDER,
@@ -867,12 +883,12 @@ def _render_results(s):
                 textfont=dict(size=13, color=_WHITE, family="DM Sans, sans-serif"),
                 insidetextorientation="horizontal",
                 sort=False, direction="clockwise",
-                hovertemplate="<b>%{label}</b><br>$%{value:,.2f} (%{percent})<extra></extra>",
+                hovertemplate="<b>%{label}</b><br>€%{value:,.2f} (%{percent})<extra></extra>",
             ))
 
             # Centre annotation showing total value + "Total" label
             fig_donut.add_annotation(
-                text=f"<b>${z_total:,.0f}</b><br><span style='font-size:11px'>Total</span>",
+                text=f"<b>€{z_total:,.0f}</b><br><span style='font-size:11px'>Total</span>",
                 x=0.5, y=0.5, xref="paper", yref="paper",
                 showarrow=False,
                 font=dict(size=18, color=_WHITE, family="DM Mono, monospace"),
@@ -906,7 +922,7 @@ def _render_results(s):
                         padding:16px;text-align:center;">
               <div style="font-size:9px;text-transform:uppercase;color:#6b859e;">Total Objective</div>
               <div style="font-size:24px;color:#1bb8a0;font-family:'DM Mono',monospace;">
-                  ${res['objective']:,.0f}</div>
+                  €{res['objective']:,.0f}</div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -918,8 +934,7 @@ def _render_results(s):
 
 
         st.markdown(
-            '<div class="sc-card-title" style="margin-bottom:4px">(s,S) Reorder Policy Levels</div>'
-            '<div class="sc-card-sub" style="margin-bottom:12px">Order when Opening Inventory ≤ s; order up to S</div>',
+            '<div class="sc-card-title" style="margin-bottom:4px">(s,S) Reorder Policy Levels</div>',
             unsafe_allow_html=True,
         )
 
@@ -974,8 +989,7 @@ def _render_results(s):
             st.session_state["pl_flt_per"]  = period_opts[0]
 
         st.markdown(
-            '<div class="sc-card-title" style="margin-bottom:4px">Full Period-by-Period Plan</div>'
-            '<div class="sc-card-sub" style="margin-bottom:12px">Inventory, orders and shortages by item and period</div>',
+            '<div class="sc-card-title" style="margin-bottom:4px">Full Period-by-Period Plan</div>',
             unsafe_allow_html=True,
         )
         st.markdown('<div style="margin-bottom:8px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#6b859e;">Filter columns</div>', unsafe_allow_html=True)
@@ -1147,7 +1161,7 @@ def _render_results(s):
         if not obj_df.empty:
             obj_df.to_excel(w, sheet_name="Objective_Breakdown", index=False)
 
-    st.download_button("⬇️ Download Results (.xlsx)", data=buf.getvalue(),
+    st.download_button("Download Results (.xlsx)", data=buf.getvalue(),
                        file_name="KleenTex_Optimization_Results.xlsx",
                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     st.markdown("</div>", unsafe_allow_html=True)
