@@ -157,7 +157,7 @@ def render():
             with mc2:
                 st.markdown(f"""<div class="metric-tile accent-teal" {_T}>
                     <div class="metric-label">Best Model</div>
-                    <div class="metric-value" style="font-size:16px;line-height:1.3">{best_model}</div>
+                    <div class="metric-value">{best_model}</div>
                     <div class="metric-sub">selected by rolling validation</div></div>""", unsafe_allow_html=True)
             with mc3:
                 st.markdown(f"""<div class="metric-tile accent-rose" {_T}>
@@ -731,7 +731,7 @@ def _render_results(s, sku_sel=None):
             bg, fg = colors.get(str(v), ("rgba(107,133,158,.18)", "#8fa3b8"))
             return (
                 f'<span style="display:inline-block;padding:2px 10px;border-radius:12px;' +
-                f'font-size:11px;font-weight:500;font-family:DM Mono,monospace;' +
+                f'font-size:16px;font-weight:500;font-family:DM Mono,monospace;' +
                 f'background:{bg};color:{fg};">{v}</span>'
             )
 
@@ -745,7 +745,7 @@ def _render_results(s, sku_sel=None):
             bg, fg = colors.get(str(v).lower(), ("rgba(107,133,158,.18)", "#8fa3b8"))
             return (
                 f'<span style="display:inline-block;padding:2px 10px;border-radius:12px;' +
-                f'font-size:11px;font-weight:500;font-family:DM Mono,monospace;' +
+                f'font-size:16px;font-weight:500;font-family:DM Mono,monospace;' +
                 f'background:{bg};color:{fg};">{v}</span>'
             )
 
@@ -753,11 +753,11 @@ def _render_results(s, sku_sel=None):
             try:    return f'<span style="font-family:DM Mono,monospace;color:#a8c0d4;">{float(v):.4f}</span>'
             except: return f'<span style="color:#6b859e;">N/A</span>'
 
-        th = ("padding:10px 14px;text-align:left;font-size:10px;text-transform:uppercase;"
+        th = ("padding:10px 14px;text-align:left;font-size:16px;text-transform:uppercase;"
               "letter-spacing:.09em;color:#6b859e;font-weight:500;border-bottom:1px solid #243b55;"
               "white-space:nowrap;")
-        td     = "padding:11px 14px;font-size:12px;color:#a8c0d4;border-bottom:1px solid #1a2e45;white-space:nowrap;"
-        td_sku = "padding:11px 14px;font-size:12px;color:#f4f8fb;border-bottom:1px solid #1a2e45;font-family:DM Mono,monospace;font-weight:500;"
+        td     = "padding:11px 14px;font-size:16px;color:#a8c0d4;border-bottom:1px solid #1a2e45;white-space:nowrap;"
+        td_sku = "padding:11px 14px;font-size:16px;color:#f4f8fb;border-bottom:1px solid #1a2e45;font-family:DM Mono,monospace;font-weight:500;"
 
         # Build header from available columns in tbl
         headers = list(tbl.columns)
